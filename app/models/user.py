@@ -12,3 +12,4 @@ class User(Base):
     enterprise_id = Column(Integer, ForeignKey("enterprises.id"))
 
     enterprise = relationship("Enterprise", back_populates="users")
+    reset_tokens = relationship("PasswordResetToken", back_populates="user")

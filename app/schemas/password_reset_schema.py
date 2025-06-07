@@ -1,13 +1,15 @@
 from pydantic import BaseModel, EmailStr, field_validator
 import re
 
-class UserCreate(BaseModel):
-    name: str
+class PasswordResetRequest(BaseModel):
     email: EmailStr
-    password: str
-    enterprise_id: int
 
-    @field_validator("password")
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
     def validate_password(cls, v):
         if len(v) < 8:
             raise ValueError("A senha deve ter no mínimo 8 caracteres.")
@@ -20,11 +22,3 @@ class UserCreate(BaseModel):
         if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", v):
             raise ValueError("A senha deve conter ao menos um caractere especial.")
         return v
-
-class UserOut(BaseModel):
-    id: int
-    name: str
-    email: EmailStr
-
-    class Config:
-        from_attributes = True

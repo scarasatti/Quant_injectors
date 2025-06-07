@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
+from dotenv import load_dotenv
+import os
+from pathlib import Path
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env")
 
-SECRET_KEY = "sua_chave_super_secreta"
+SECRET_KEY = os.getenv("SECRET_KEY")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60
 
