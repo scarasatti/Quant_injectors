@@ -3,7 +3,7 @@ from pydantic import BaseModel
 class ProductBase(BaseModel):
     name: str
     ciclo: int
-
+    bottleneck: int
 
 class ProductCreate(ProductBase):
     pass

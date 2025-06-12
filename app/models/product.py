@@ -6,4 +6,5 @@ class Product(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
-    ciclo = Column(Integer, nullable=False)
+    cycle = Column(Integer, nullable=False)
+    Bottleneck = Column(Integer, nullable=False)

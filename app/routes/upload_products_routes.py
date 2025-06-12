@@ -21,16 +21,20 @@ async def upload_products_xlsx(file: UploadFile = File(...), db: Session = Depen
         for _, row in df.iterrows():
             nome = str(row.get("produto")).strip()
             ciclo = row.get("ciclo")
+            gargalo = row.get("Tempo de Produção Pós Gargalo")
 
-            if not nome or pd.isna(ciclo):
+            if not nome or pd.isna(ciclo) or pd.isna(gargalo):
                 continue
 
-            # Verifica se o produto já existe
             if db.query(Product).filter(Product.name == nome).first():
                 produtos_ignorados += 1
                 continue
 
-            produto = Product(name=nome, ciclo=int(ciclo))
+            produto = Product(
+                name=nome,
+                ciclo=int(ciclo),
+                bottleneck=int(gargalo)
+            )
             db.add(produto)
             produtos_adicionados += 1
 
