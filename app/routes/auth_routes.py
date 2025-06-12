@@ -10,7 +10,7 @@ from app.models.user_session import UserSession
 from app.auth.jwt_handler import create_access_token
 from app.auth.dependencies import get_current_user
 
-router = APIRouter()
+router = APIRouter(prefix="/Criador de tabelas", tags=["Banco de Dados"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 MAX_SESSIONS = 1
 
