@@ -1,9 +1,9 @@
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-# URL de conexão (ajuste se for MySQL, PostgreSQL, etc.)
-SQLALCHEMY_DATABASE_URL = "sqlite:///./lindo.db"
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Conexão com SQLite (para testes locais)
 engine = create_engine(
