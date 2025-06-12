@@ -14,7 +14,8 @@ from app.routes import (
     setup_template_routes,
     upload_setup_matrix_routes,
     solver,
-    inputs
+    inputs,
+    production_schedule
 )
 app = FastAPI()
 
@@ -33,3 +34,5 @@ app.include_router(upload_setup_matrix_routes.router)
 app.include_router(setup_template_routes.router)
 app.include_router(solver.router, prefix="/sequenciamento", tags=["sequenciamento"])
 app.include_router(inputs.router)
+
+app.include_router(production_schedule.router)

@@ -5,6 +5,7 @@ from typing import Optional
 from app.database import get_db
 from app.models.job import Job
 from app.models.setup import Setup
+from app.utils.save_schedule import save_solver_result_to_db
 from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpBinary, value
 import numpy as np
 
@@ -21,7 +22,6 @@ def solve_jobs(
     if len(jobs_data) != len(job_ids):
         raise HTTPException(status_code=404, detail="Algum job não foi encontrado")
 
-    # ✅ Ajusta o horário do sequencing_date para 12:00
     if sequencing_date is None:
         today = datetime.now().date()
         sequencing_date = datetime.combine(today, time(hour=12))
@@ -30,13 +30,11 @@ def solve_jobs(
 
     jobs = list(range(len(jobs_data)))
 
-    # ✅ TEMPO TOTAL EM HORAS ARREDONDADO
     processing_time = [
         round((job.product.ciclo * job.demand) / 3600)
         for job in jobs_data
     ]
 
-    # ✅ DUE TIME em horas entre meio-dia de promised_date e sequencing_date
     due_time = [
         max(int((job.promised_date.replace(hour=12, minute=0, second=0, microsecond=0) - sequencing_date).total_seconds() // 3600), 0)
         for job in jobs_data
@@ -65,7 +63,6 @@ def solve_jobs(
             "faltantes": setups_faltando
         })
 
-    # Solver
     model = LpProblem("Sequenciamento_Produção", LpMinimize)
     start = LpVariable.dicts("inicio", jobs, lowBound=0)
     early = LpVariable.dicts("antecipacao", jobs, lowBound=0)
@@ -97,6 +94,18 @@ def solve_jobs(
             "produto": jobs_data[i].product.name,
             "cliente": jobs_data[i].client.name,
         })
+
+    run_saved = save_solver_result_to_db(
+        db=db,
+        sequencing_date=sequencing_date,
+        jobs_data=jobs_data,
+        ordem_execucao=jobs_ordenados,
+        start=start,
+        tardy=tardy,
+        processing_time=processing_time,
+        setup_count=len(jobs) - 1,
+        optimized_setups=sum(1 for (i, j) in x if i != j and value(x[(i, j)]) > 0.5)
+    )
 
     return {
         "sequencing_date": sequencing_date.isoformat(),
