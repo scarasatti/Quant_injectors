@@ -8,10 +8,19 @@ router = APIRouter(prefix="/setup_trocas", tags=["SetupTrocas"])
 
 @router.post("/", response_model=SetupTrocaResponse)
 def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db)):
+    existing = db.query(Setup).filter_by(
+        produto_de=setup.produto_de,
+        produto_para=setup.produto_para
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Setup já cadastrado")
+
     db_setup = Setup(**setup.model_dump())
     db.add(db_setup)
     db.commit()
     db.refresh(db_setup)
+
     return db_setup
 
 @router.get("/", response_model=list[SetupTrocaResponse])
