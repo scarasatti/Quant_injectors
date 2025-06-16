@@ -5,7 +5,7 @@ import pandas as pd
 from app.database import get_db
 from app.models.client import Client
 
-router = APIRouter(prefix="/upload", tags=["Upload clientes"])
+router = APIRouter(prefix="/upload")
 
 @router.post("/clientes-xlsx")
 async def upload_clientes_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):

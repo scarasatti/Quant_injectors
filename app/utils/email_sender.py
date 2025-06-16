@@ -44,3 +44,39 @@ def send_password_reset_email(to_email: str, token: str):
     except Exception as e:
         print("Erro ao enviar e-mail:", e)
         return False
+
+def send_access_token_email(to_email: str, token: str):
+    subject = "🔐 Token de Acesso - Cadastro no Sistema QUANT"
+    body = f"""
+    <html>
+        <body>
+            <p>Olá,</p>
+            <p>Você recebeu um token para realizar seu cadastro no sistema.</p>
+            <p>Use este token na página de cadastro:</p>
+            <p><b>{token}</b></p>
+            <p>Este token é válido para um único cadastro e não pode ser reutilizado.</p>
+            <br>
+            <p>Qualquer dúvida, fale com nosso suporte.</p>
+            <hr>
+            <p><b>Equipe Sistema Lindo</b></p>
+        </body>
+    </html>
+    """
+
+    msg = MIMEMultipart("alternative")
+    msg["From"] = EMAIL_SENDER
+    msg["To"] = to_email
+    msg["Subject"] = subject
+
+    msg.attach(MIMEText(body, "html"))
+
+    try:
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+        server.sendmail(EMAIL_SENDER, to_email, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print("Erro ao enviar e-mail:", e)
+        return False

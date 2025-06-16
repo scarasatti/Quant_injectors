@@ -8,7 +8,7 @@ from app.database import get_db
 from app.models.product import Product
 from app.models.setup import Setup
 
-router = APIRouter(prefix="/upload", tags=["Upload setups"])
+router = APIRouter(prefix="/upload")
 
 @router.post("/setup-matrix-xlsx")
 def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):

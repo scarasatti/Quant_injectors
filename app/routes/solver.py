@@ -31,7 +31,7 @@ def solve_jobs(
     jobs = list(range(len(jobs_data)))
 
     processing_time = [
-        round((job.product.ciclo * job.demand) / 3600)
+        round((job.product.cycle * job.demand) / 3600)
         for job in jobs_data
     ]
 

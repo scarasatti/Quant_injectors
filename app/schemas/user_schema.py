@@ -6,7 +6,9 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     enterprise_id: int
+    token: str  # token de cadastro fornecido pela empresa
 
+    @classmethod
     @field_validator("password")
     def validate_password(cls, v):
         if len(v) < 8:

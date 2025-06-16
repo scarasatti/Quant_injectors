@@ -8,7 +8,7 @@ from app.models.client import Client
 from app.models.product import Product
 from app.models.job import Job
 
-router = APIRouter(prefix="/upload", tags=["Upload jobs"])
+router = APIRouter(prefix="/upload")
 
 @router.post("/jobs-xlsx")
 async def upload_jobs_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):

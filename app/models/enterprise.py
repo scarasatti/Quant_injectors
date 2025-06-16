@@ -7,5 +7,10 @@ class Enterprise(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, unique=True, nullable=False)
+    representative_email = Column(String, nullable=False)
+    access_count = Column(Integer, nullable=False)
 
     users = relationship("User", back_populates="enterprise")
+
+    # Este será o relacionamento com os tokens
+    access_tokens = relationship("AccessToken", back_populates="enterprise")

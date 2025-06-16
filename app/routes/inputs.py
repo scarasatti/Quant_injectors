@@ -32,7 +32,7 @@ def get_solver_inputs_formatado(
 
     # ✅ TEMPO EM HORAS (ARREDONDADO)
     processing_time = [
-        round((job.product.ciclo * job.demand) / 3600)
+        round((job.product.cycle * job.demand) / 3600)
         for job in jobs_data
     ]
 
