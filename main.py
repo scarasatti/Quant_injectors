@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         db.commit()
     yield
 
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 app.include_router(interprise_routes.router, tags=["Enterprises"])
 app.include_router(user_routes.router, tags=["Users"])
