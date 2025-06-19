@@ -89,6 +89,7 @@ def delete_user(
 def get_logged_user(current_user: User = Depends(get_current_user)):
     return current_user
 
+
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,

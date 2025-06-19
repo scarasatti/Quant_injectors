@@ -37,7 +37,6 @@ app = FastAPI(lifespan=lifespan)
 app.include_router(interprise_routes.router, tags=["Enterprises"])
 app.include_router(user_routes.router, tags=["Users"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
-
 app.include_router(password_reset_routes.router, tags=["Password Reset"])
 app.include_router(client_routes.router, tags=["Clients"])
 app.include_router(product_routes.router, tags=["Products"])
