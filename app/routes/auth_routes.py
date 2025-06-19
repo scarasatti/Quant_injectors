@@ -7,15 +7,15 @@ from pydantic import BaseModel
 from app.database import SessionLocal
 from app.models.user import User
 from app.models.user_session import UserSession
-from app.auth.jwt_handler import create_access_token
 from app.auth.auth_bearer import get_current_user, oauth2_scheme
+from app.auth.jwt_handler import create_access_token, create_refresh_token
 
 from jose import jwt, ExpiredSignatureError, JWTError
 from app.auth.jwt_handler import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-MAX_SESSIONS = 1
+MAX_SESSIONS = 10000000
 
 
 def get_db():
@@ -41,7 +41,7 @@ def login(
     if not user or not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    # ⚠️ Expira sessões antigas
+    # Expira sessões antigas
     sessions = db.query(UserSession).filter(
         UserSession.user_id == user.id,
         UserSession.is_active == True
@@ -50,9 +50,7 @@ def login(
     for s in sessions:
         try:
             jwt.decode(s.token, SECRET_KEY, algorithms=[ALGORITHM])
-        except ExpiredSignatureError:
-            s.is_active = False
-        except JWTError:
+        except (ExpiredSignatureError, JWTError):
             s.is_active = False
 
     db.commit()
@@ -65,24 +63,26 @@ def login(
     if active_sessions >= MAX_SESSIONS:
         raise HTTPException(status_code=403, detail="Número máximo de sessões ativas atingido.")
 
-    # ✅ Incrementa a versão do token
     user.token_version += 1
     db.commit()
     db.refresh(user)
 
-    # 🧾 Gera token com token_version
-    token = create_access_token({
+    access_token = create_access_token({
         "sub": str(user.id),
         "token_version": user.token_version
     })
 
-    # Salva nova sessão
-    new_session = UserSession(user_id=user.id, token=token)
+    refresh_token = create_refresh_token({
+        "sub": str(user.id)
+    })
+
+    new_session = UserSession(user_id=user.id, token=access_token)
     db.add(new_session)
     db.commit()
 
     return {
-        "access_token": token,
+        "access_token": access_token,
+        "refresh_token": refresh_token,
         "token_type": "bearer",
         "user": {
             "id": user.id,
@@ -90,6 +90,7 @@ def login(
             "enterprise_id": user.enterprise_id
         }
     }
+
 @router.post("/logout")
 def logout(
     current_user: User = Depends(get_current_user),
