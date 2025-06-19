@@ -9,7 +9,7 @@ class Enterprise(Base):
     name = Column(String, unique=True, nullable=False)
     representative_email = Column(String, nullable=False)
     access_count = Column(Integer, nullable=False)
-
+    model_type = Column(String, nullable=False)
     users = relationship("User", back_populates="enterprise")
 
     # Este será o relacionamento com os tokens

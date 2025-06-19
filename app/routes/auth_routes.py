@@ -8,7 +8,10 @@ from app.database import SessionLocal
 from app.models.user import User
 from app.models.user_session import UserSession
 from app.auth.jwt_handler import create_access_token
+from app.auth.auth_bearer import get_current_user, oauth2_scheme
 
+from jose import jwt, ExpiredSignatureError, JWTError
+from app.auth.jwt_handler import SECRET_KEY, ALGORITHM
 
 router = APIRouter()
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -38,18 +41,44 @@ def login(
     if not user or not pwd_context.verify(form_data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Credenciais inválidas")
 
-    # 🔒 Finaliza sessões antigas automaticamente
-    db.query(UserSession).filter(
+    # ⚠️ Expira sessões antigas
+    sessions = db.query(UserSession).filter(
         UserSession.user_id == user.id,
         UserSession.is_active == True
-    ).update({"is_active": False})
+    ).all()
+
+    for s in sessions:
+        try:
+            jwt.decode(s.token, SECRET_KEY, algorithms=[ALGORITHM])
+        except ExpiredSignatureError:
+            s.is_active = False
+        except JWTError:
+            s.is_active = False
+
     db.commit()
 
-    # 🔐 Gera novo token e cria nova sessão
-    token = create_access_token({"sub": str(user.id)})
+    active_sessions = db.query(UserSession).filter(
+        UserSession.user_id == user.id,
+        UserSession.is_active == True
+    ).count()
+
+    if active_sessions >= MAX_SESSIONS:
+        raise HTTPException(status_code=403, detail="Número máximo de sessões ativas atingido.")
+
+    # ✅ Incrementa a versão do token
+    user.token_version += 1
+    db.commit()
+    db.refresh(user)
+
+    # 🧾 Gera token com token_version
+    token = create_access_token({
+        "sub": str(user.id),
+        "token_version": user.token_version
+    })
+
+    # Salva nova sessão
     new_session = UserSession(user_id=user.id, token=token)
     db.add(new_session)
-    db.flush()
     db.commit()
 
     return {
@@ -60,4 +89,53 @@ def login(
             "email": user.email,
             "enterprise_id": user.enterprise_id
         }
+    }
+@router.post("/logout")
+def logout(
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+    # 1. Incrementa token_version para invalidar todos os tokens
+    current_user.token_version += 1
+    db.commit()
+
+    # 2. Marca esta sessão como inativa
+    session = db.query(UserSession).filter_by(
+        user_id=current_user.id,
+        token=token,
+        is_active=True
+    ).first()
+    if session:
+        session.is_active = False
+        db.commit()
+
+    return {"msg": "Logout realizado com sucesso"}
+
+@router.post("/refresh")
+def refresh_token(
+    current_user: User = Depends(get_current_user),
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db)
+):
+
+    session = db.query(UserSession).filter_by(
+        user_id=current_user.id,
+        token=token,
+        is_active=True
+    ).first()
+
+    if not session:
+        raise HTTPException(status_code=401, detail="Sessão inativa ou token inválido")
+
+    # Gera novo token
+    new_token = create_access_token({"sub": str(current_user.id)})
+
+    # Atualiza a sessão no banco
+    session.token = new_token
+    db.commit()
+
+    return {
+        "access_token": new_token,
+        "token_type": "bearer"
     }

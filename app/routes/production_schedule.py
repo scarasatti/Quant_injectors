@@ -11,7 +11,8 @@ from app.models.predicted_revenue_by_day import PredictedRevenueByDay
 from app.schemas.production_schedule_run_schema import ProductionScheduleRunCreate, ProductionScheduleRunResponse
 from app.schemas.production_schedule_result_schema import ProductionScheduleResultCreate, ProductionScheduleResultResponse
 from app.schemas.predicted_revenue_byday_schema import PredictedRevenueByDayCreate, PredictedRevenueByDayResponse
-
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
 router = APIRouter(prefix="/production-schedule", tags=["Production Schedule"])
 
 # 📥 Criar uma execução completa
@@ -20,7 +21,8 @@ def create_schedule(
     run_data: ProductionScheduleRunCreate,
     results: List[ProductionScheduleResultCreate],
     revenue_by_day: List[PredictedRevenueByDayCreate],
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     run = ProductionScheduleRun(**run_data.dict(), created_at=datetime.utcnow())
     db.add(run)
@@ -38,12 +40,12 @@ def create_schedule(
 
 # 📃 Listar todas as execuções
 @router.get("/", response_model=List[ProductionScheduleRunResponse])
-def list_runs(db: Session = Depends(get_db)):
+def list_runs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     return db.query(ProductionScheduleRun).order_by(ProductionScheduleRun.created_at.desc()).all()
 
 # 🔍 Obter uma execução por ID (com resultados e faturamento)
 @router.get("/{run_id}", response_model=ProductionScheduleRunResponse)
-def get_run(run_id: int, db: Session = Depends(get_db)):
+def get_run(run_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     run = db.query(ProductionScheduleRun).filter_by(id=run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Execution not found")
@@ -51,7 +53,7 @@ def get_run(run_id: int, db: Session = Depends(get_db)):
 
 # ❌ Deletar uma execução e tudo relacionado
 @router.delete("/{run_id}")
-def delete_run(run_id: int, db: Session = Depends(get_db)):
+def delete_run(run_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     run = db.query(ProductionScheduleRun).filter_by(id=run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Execution not found")

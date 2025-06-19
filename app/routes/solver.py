@@ -8,6 +8,8 @@ from app.models.setup import Setup
 from app.utils.save_schedule import save_solver_result_to_db
 from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpBinary, value
 import numpy as np
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
@@ -15,7 +17,9 @@ router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 def solve_jobs(
     job_ids: list[int],
     sequencing_date: Optional[datetime] = Query(default=None),
-    db: Session = Depends(get_db)
+    machine_availability: int = Query(default=100, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     jobs_data = db.query(Job).filter(Job.id.in_(job_ids)).all()
 
@@ -30,10 +34,15 @@ def solve_jobs(
 
     jobs = list(range(len(jobs_data)))
 
-    processing_time = [
-        round((job.product.cycle * job.demand) / 3600)
-        for job in jobs_data
-    ]
+    fator_maquina = 1 + ((100 - machine_availability) / 100)
+
+    processing_time = []
+    for job in jobs_data:
+        scrap_percentual = float(job.product.scrap)
+        fator_scrap = 1 + (scrap_percentual / 100)
+        demanda_com_refugo = job.demand * fator_scrap
+        tempo_horas_ajustado = (job.product.cycle * demanda_com_refugo) / 3600 * fator_maquina
+        processing_time.append(round(tempo_horas_ajustado))
 
     due_time = [
         max(int((job.promised_date.replace(hour=12, minute=0, second=0, microsecond=0) - sequencing_date).total_seconds() // 3600), 0)
@@ -95,6 +104,10 @@ def solve_jobs(
             "cliente": jobs_data[i].client.name,
         })
 
+    for job in jobs_data:
+        job.processed = True
+    db.commit()
+
     run_saved = save_solver_result_to_db(
         db=db,
         sequencing_date=sequencing_date,
@@ -110,5 +123,6 @@ def solve_jobs(
     return {
         "sequencing_date": sequencing_date.isoformat(),
         "sequencia": resultado,
-        "objective_value": round(value(model.objective), 2)
+        "objective_value": value(model.objective)
     }
+

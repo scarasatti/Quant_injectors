@@ -3,11 +3,14 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.job import Job
 from app.schemas.job_schema import JobCreate, JobUpdate, JobResponse
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
 @router.post("/", response_model=JobResponse)
-def create_job(job: JobCreate, db: Session = Depends(get_db)):
+def create_job(job: JobCreate, db: Session = Depends(get_db),
+               current_user: User = Depends(get_current_user)):
     db_job = Job(**job.model_dump())
     db.add(db_job)
     db.commit()
@@ -15,18 +18,21 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
     return db_job
 
 @router.get("/", response_model=list[JobResponse])
-def list_jobs(db: Session = Depends(get_db)):
+def list_jobs(db: Session = Depends(get_db),
+              current_user: User = Depends(get_current_user)):
     return db.query(Job).all()
 
 @router.get("/{job_id}", response_model=JobResponse)
-def get_job(job_id: int, db: Session = Depends(get_db)):
+def get_job(job_id: int, db: Session = Depends(get_db),
+            current_user: User = Depends(get_current_user)):
     job = db.query(Job).get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
 @router.put("/{job_id}", response_model=JobResponse)
-def update_job(job_id: int, job: JobUpdate, db: Session = Depends(get_db)):
+def update_job(job_id: int, job: JobUpdate, db: Session = Depends(get_db),
+               current_user: User = Depends(get_current_user)):
     db_job = db.query(Job).get(job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -37,7 +43,8 @@ def update_job(job_id: int, job: JobUpdate, db: Session = Depends(get_db)):
     return db_job
 
 @router.delete("/{job_id}")
-def delete_job(job_id: int, db: Session = Depends(get_db)):
+def delete_job(job_id: int, db: Session = Depends(get_db),
+               current_user: User = Depends(get_current_user)):
     db_job = db.query(Job).get(job_id)
     if not db_job:
         raise HTTPException(status_code=404, detail="Job not found")

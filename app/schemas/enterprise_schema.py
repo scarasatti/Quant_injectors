@@ -4,7 +4,7 @@ class EnterpriseCreate(BaseModel):
     name: str
     representative_email: EmailStr
     access_count: int
-
+    model_type: str
 
 class EnterpriseOut(BaseModel):
     id: int

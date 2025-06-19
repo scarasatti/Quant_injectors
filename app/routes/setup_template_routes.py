@@ -7,11 +7,14 @@ import io
 from app.database import get_db
 from app.models.product import Product
 from app.models.setup import Setup
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/template", tags=["Templates"])
 
 @router.get("/setup-matrix")
-def download_setup_template(db: Session = Depends(get_db)):
+def download_setup_template(db: Session = Depends(get_db),
+                            current_user: User = Depends(get_current_user)):
     produtos = db.query(Product).all()
     nomes = [p.name for p in produtos]
     id_por_nome = {p.name: p.id for p in produtos}

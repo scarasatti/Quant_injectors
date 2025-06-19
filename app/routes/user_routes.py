@@ -8,6 +8,9 @@ from passlib.context import CryptContext
 from app.models.access_token import AccessToken
 from app.auth.auth_bearer import get_current_user
 
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
+
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -48,6 +51,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 @router.get("/", response_model=list[UserOut])
 def list_users(
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 
 ):
     return db.query(User).all()
@@ -57,6 +61,7 @@ def list_users(
 def get_user(
     user_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 
 ):
     user = db.query(User).get(user_id)
@@ -69,6 +74,7 @@ def get_user(
 def delete_user(
     user_id: int,
     db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 
 ):
     user = db.query(User).get(user_id)

@@ -10,6 +10,7 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     enterprise_id = Column(Integer, ForeignKey("enterprises.id"))
+    token_version = Column(Integer, default=0)
 
     enterprise = relationship("Enterprise", back_populates="users")
     reset_tokens = relationship("PasswordResetToken", back_populates="user")

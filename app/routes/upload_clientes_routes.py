@@ -4,11 +4,14 @@ import pandas as pd
 
 from app.database import get_db
 from app.models.client import Client
+from app.auth.auth_bearer import get_current_user
+from app.models.user import User
 
 router = APIRouter(prefix="/upload")
 
 @router.post("/clientes-xlsx")
-async def upload_clientes_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):
+async def upload_clientes_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db),
+                               current_user: User = Depends(get_current_user)):
     if not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="O arquivo precisa ser .xlsx")
 
