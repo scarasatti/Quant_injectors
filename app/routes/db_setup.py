@@ -6,12 +6,9 @@ from app.models import (
     predicted_revenue_by_day, production_schedule_run, production_schedule_result
 )
 
-from app.auth.auth_bearer import get_current_user
-from app.models.user import User
-
 router = APIRouter()
 
 @router.get("/init-db", tags=["Dev"])
-def create_tables(current_user: User = Depends(get_current_user)):
+def create_tables():
     Base.metadata.create_all(bind=engine)
     return {"message": "🗂️ Tabelas criadas com sucesso!"}
