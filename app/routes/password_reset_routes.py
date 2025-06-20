@@ -67,10 +67,8 @@ def confirm_password_reset(data: PasswordResetConfirm, db: Session = Depends(get
     if not user:
         raise HTTPException(status_code=404, detail="Usuário não encontrado.")
 
-    # Atualiza a senha
     user.hashed_password = pwd_context.hash(data.new_password)
 
-    # Marca o token como usado
     reset_token.used = True
 
     db.commit()

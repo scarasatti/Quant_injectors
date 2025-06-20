@@ -32,8 +32,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
 
 @router.get("/", response_model=list[UserOut])
 def list_users(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     return db.query(User).all()
 
@@ -44,8 +43,7 @@ def get_logged_user(current_user: User = Depends(get_current_user)):
 @router.get("/{user_id}", response_model=UserOut)
 def get_user(
     user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     user = db.query(User).get(user_id)
     if not user:
@@ -55,8 +53,7 @@ def get_user(
 @router.delete("/{user_id}")
 def delete_user(
     user_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     user = db.query(User).get(user_id)
     if not user:
@@ -64,3 +61,4 @@ def delete_user(
     db.delete(user)
     db.commit()
     return {"message": "Usuário removido com sucesso."}
+

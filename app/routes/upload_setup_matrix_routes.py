@@ -14,8 +14,7 @@ from app.models.user import User
 router = APIRouter(prefix="/upload")
 
 @router.post("/setup-matrix-xlsx")
-def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db),
-                             current_user: User = Depends(get_current_user)):
+def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):
     try:
         contents = file.file.read()
         df = pd.read_excel(BytesIO(contents), index_col=0)

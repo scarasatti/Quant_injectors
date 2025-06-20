@@ -6,8 +6,7 @@ from app.models.access_token import AccessToken
 from app.schemas.enterprise_schema import EnterpriseCreate, EnterpriseOut
 from app.utils.token_generator import generate_unique_token
 from app.utils.email_sender import send_access_token_email
-from app.auth.auth_bearer import get_current_user
-from app.models.user import User
+
 
 router = APIRouter(prefix="/enterprises")
 
@@ -47,23 +46,19 @@ def create_enterprise(data: EnterpriseCreate, db: Session = Depends(get_db)):
     return new_enterprise
 
 @router.get("/", response_model=list[EnterpriseOut])
-def list_enterprises(db: Session = Depends(get_db),
-                     current_user: User = Depends(get_current_user)):
+def list_enterprises(db: Session = Depends(get_db)):
     return db.query(Enterprise).all()
 
 
 @router.get("/{enterprise_id}", response_model=EnterpriseOut)
-def get_enterprise(enterprise_id: int, db: Session = Depends(get_db),
-                   current_user: User = Depends(get_current_user)
-                   ):
+def get_enterprise(enterprise_id: int, db: Session = Depends(get_db)):
     enterprise = db.query(Enterprise).get(enterprise_id)
     if not enterprise:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
     return enterprise
 
 @router.put("/{enterprise_id}", response_model=EnterpriseOut)
-def update_enterprise(enterprise_id: int, data: EnterpriseCreate, db: Session = Depends(get_db),
-                      current_user: User = Depends(get_current_user)):
+def update_enterprise(enterprise_id: int, data: EnterpriseCreate, db: Session = Depends(get_db)):
     enterprise = db.query(Enterprise).get(enterprise_id)
     if not enterprise:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")
@@ -77,8 +72,7 @@ def update_enterprise(enterprise_id: int, data: EnterpriseCreate, db: Session = 
 
 
 @router.delete("/{enterprise_id}")
-def delete_enterprise(enterprise_id: int, db: Session = Depends(get_db),
-                      current_user: User = Depends(get_current_user)):
+def delete_enterprise(enterprise_id: int, db: Session = Depends(get_db)):
     enterprise = db.query(Enterprise).get(enterprise_id)
     if not enterprise:
         raise HTTPException(status_code=404, detail="Empresa não encontrada.")

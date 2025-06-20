@@ -15,14 +15,13 @@ from app.auth.auth_bearer import get_current_user
 from app.models.user import User
 router = APIRouter(prefix="/production-schedule", tags=["Production Schedule"])
 
-# 📥 Criar uma execução completa
+
 @router.post("/", response_model=ProductionScheduleRunResponse)
 def create_schedule(
     run_data: ProductionScheduleRunCreate,
     results: List[ProductionScheduleResultCreate],
     revenue_by_day: List[PredictedRevenueByDayCreate],
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     run = ProductionScheduleRun(**run_data.dict(), created_at=datetime.utcnow())
     db.add(run)
@@ -38,22 +37,22 @@ def create_schedule(
     db.refresh(run)
     return run
 
-# 📃 Listar todas as execuções
+
 @router.get("/", response_model=List[ProductionScheduleRunResponse])
-def list_runs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_runs(db: Session = Depends(get_db)):
     return db.query(ProductionScheduleRun).order_by(ProductionScheduleRun.created_at.desc()).all()
 
-# 🔍 Obter uma execução por ID (com resultados e faturamento)
+
 @router.get("/{run_id}", response_model=ProductionScheduleRunResponse)
-def get_run(run_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_run(run_id: int, db: Session = Depends(get_db)):
     run = db.query(ProductionScheduleRun).filter_by(id=run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Execution not found")
     return run
 
-# ❌ Deletar uma execução e tudo relacionado
+
 @router.delete("/{run_id}")
-def delete_run(run_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def delete_run(run_id: int, db: Session = Depends(get_db)):
     run = db.query(ProductionScheduleRun).filter_by(id=run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Execution not found")

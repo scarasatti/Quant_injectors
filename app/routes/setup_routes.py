@@ -3,14 +3,11 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.setup import Setup
 from app.schemas.setup_schema import SetupTrocaCreate, SetupTrocaUpdate, SetupTrocaResponse
-from app.auth.auth_bearer import get_current_user
-from app.models.user import User
 
 router = APIRouter(prefix="/setup_trocas", tags=["SetupTrocas"])
 
 @router.post("/", response_model=SetupTrocaResponse)
-def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db),
-                 current_user: User = Depends(get_current_user)):
+def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db)):
 
     existing = db.query(Setup).filter_by(
         produto_de=setup.produto_de,
@@ -28,19 +25,18 @@ def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db),
     return db_setup
 
 @router.get("/", response_model=list[SetupTrocaResponse])
-def list_setups(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def list_setups(db: Session = Depends(get_db)):
     return db.query(Setup).all()
 
 @router.get("/{setup_id}", response_model=SetupTrocaResponse)
-def get_setup(setup_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_setup(setup_id: int, db: Session = Depends(get_db)):
     setup = db.query(Setup).get(setup_id)
     if not setup:
         raise HTTPException(status_code=404, detail="Setup not found")
     return setup
 
 @router.put("/{setup_id}", response_model=SetupTrocaResponse)
-def update_setup(setup_id: int, setup: SetupTrocaUpdate, db: Session = Depends(get_db),
-                 current_user: User = Depends(get_current_user)):
+def update_setup(setup_id: int, setup: SetupTrocaUpdate, db: Session = Depends(get_db)):
     db_setup = db.query(Setup).get(setup_id)
     if not db_setup:
         raise HTTPException(status_code=404, detail="Setup not found")
@@ -51,8 +47,7 @@ def update_setup(setup_id: int, setup: SetupTrocaUpdate, db: Session = Depends(g
     return db_setup
 
 @router.delete("/{setup_id}")
-def delete_setup(setup_id: int, db: Session = Depends(get_db),
-                 current_user: User = Depends(get_current_user)):
+def delete_setup(setup_id: int, db: Session = Depends(get_db)):
     db_setup = db.query(Setup).get(setup_id)
     if not db_setup:
         raise HTTPException(status_code=404, detail="Setup not found")

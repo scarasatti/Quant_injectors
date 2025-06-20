@@ -93,15 +93,12 @@ def login(
 
 @router.post("/logout")
 def logout(
-    current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
-    # 1. Incrementa token_version para invalidar todos os tokens
     current_user.token_version += 1
     db.commit()
 
-    # 2. Marca esta sessão como inativa
     session = db.query(UserSession).filter_by(
         user_id=current_user.id,
         token=token,
@@ -115,7 +112,6 @@ def logout(
 
 @router.post("/refresh")
 def refresh_token(
-    current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):

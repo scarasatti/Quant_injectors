@@ -18,8 +18,7 @@ def solve_jobs(
     job_ids: list[int],
     sequencing_date: Optional[datetime] = Query(default=None),
     machine_availability: int = Query(default=100, ge=1, le=100),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     jobs_data = db.query(Job).filter(Job.id.in_(job_ids)).all()
 
