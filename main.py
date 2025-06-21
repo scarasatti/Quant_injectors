@@ -22,6 +22,7 @@ from contextlib import asynccontextmanager
 from app.database import get_db
 from app.models.user_session import UserSession
 from datetime import datetime
+from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,6 +34,14 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(lifespan=lifespan)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # permite todas as origens
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(interprise_routes.router, tags=["Enterprises"])
 app.include_router(user_routes.router, tags=["Users"])
