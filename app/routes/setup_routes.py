@@ -14,8 +14,8 @@ router = APIRouter(prefix="/setup_trocas", tags=["SetupTrocas"])
 def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db)):
 
     existing = db.query(Setup).filter_by(
-        produto_de=setup.produto_de,
-        produto_para=setup.produto_para
+        from_product=setup.from_product,
+        to_product=setup.to_product
     ).first()
 
     if existing:
@@ -67,8 +67,8 @@ def create_batch_setups(data: SetupBatchCreate, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Produto de referência não encontrado")
 
     # Cadastra ele com ele mesmo (tempo = 0)
-    if not db.query(Setup).filter_by(produto_de=data.product_ref, produto_para=data.product_ref).first():
-        db.add(Setup(produto_de=data.product_ref, produto_para=data.product_ref, tempo_setup=0))
+    if not db.query(Setup).filter_by(from_product=data.product_ref, to_product=data.product_ref).first():
+        db.add(Setup(from_product=data.product_ref, to_product=data.product_ref, setup_time=0))
 
     for item in data.setups:
         # Verifica se o produto destino existe
@@ -78,8 +78,8 @@ def create_batch_setups(data: SetupBatchCreate, db: Session = Depends(get_db)):
 
         # Cadastra se não existir
         for de, para in [(data.product_ref, item.product_id), (item.product_id, data.product_ref)]:
-            if not db.query(Setup).filter_by(produto_de=de, produto_para=para).first():
-                db.add(Setup(produto_de=de, produto_para=para, tempo_setup=item.tempo_setup))
+            if not db.query(Setup).filter_by(from_product=de, to_product=para).first():
+                db.add(Setup(from_product=de, to_product=para, setup_time=item.setup_time))
 
     db.commit()
     return {"message": "Setups cadastrados com sucesso"}
@@ -87,15 +87,15 @@ def create_batch_setups(data: SetupBatchCreate, db: Session = Depends(get_db)):
 @router.get("/produto/{product_id}/resumo", response_model=list[SetupResumeResponse])
 def get_setups_simplificado(product_id: int, db: Session = Depends(get_db)):
     setups = db.query(Setup).options(
-        joinedload(Setup.produto_para_rel)
-    ).filter_by(produto_de=product_id).all()
+        joinedload(Setup.to_product_rel)
+    ).filter_by(from_product=product_id).all()
 
     return [
         SetupResumeResponse(
-            tempo_setup=s.tempo_setup,
-            produto_destino=ProductResume(
-                id=s.produto_para_rel.id,
-                name=s.produto_para_rel.name
+            setup_time=s.setup_time,
+            from_productstino=ProductResume(
+                id=s.to_product_rel.id,
+                name=s.to_product_rel.name
             )
         )
         for s in setups

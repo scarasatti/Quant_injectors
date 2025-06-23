@@ -7,12 +7,10 @@ class Setup(Base):
 
     id = Column(Integer, primary_key=True, index=True)
 
-    produto_de = Column(Integer, ForeignKey("products.id"), nullable=False)
-    produto_para = Column(Integer, ForeignKey("products.id"), nullable=False)
+    from_product = Column(Integer, ForeignKey("products.id"), nullable=False)
+    to_product = Column(Integer, ForeignKey("products.id"), nullable=False)
 
-    tempo_setup = Column(Integer, nullable=False)
-    menor_produto = Column(Float, nullable=True)
-    maior_produto = Column(Float, nullable=True)
+    setup_time = Column(Integer, nullable=False)
 
-    produto_de_rel = relationship("Product", foreign_keys=[produto_de])
-    produto_para_rel = relationship("Product", foreign_keys=[produto_para])
+    from_product_rel = relationship("Product", foreign_keys=[from_product])
+    to_product_rel = relationship("Product", foreign_keys=[to_product])
