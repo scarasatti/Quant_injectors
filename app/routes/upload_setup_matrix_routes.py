@@ -53,15 +53,15 @@ def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends
 
                 # Cadastra apenas o par explícito da planilha, sem espelhamento
                 existe = db.query(Setup).filter(
-                    Setup.produto_de == i_id,
-                    Setup.produto_para == j_id
+                    Setup.from_product == i_id,
+                    Setup.to_product == j_id
                 ).first()
 
                 if not existe:
                     db.add(Setup(
-                        produto_de=i_id,
-                        produto_para=j_id,
-                        tempo_setup=tempo
+                        from_product=i_id,
+                        to_product=j_id,
+                        setup_time=tempo
                     ))
 
         db.commit()

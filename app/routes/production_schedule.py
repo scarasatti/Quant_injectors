@@ -42,6 +42,16 @@ def create_schedule(
 def list_runs(db: Session = Depends(get_db)):
     return db.query(ProductionScheduleRun).order_by(ProductionScheduleRun.created_at.desc()).all()
 
+@router.get("/latest", response_model=ProductionScheduleRunResponse)
+def get_latest_run(db: Session = Depends(get_db)):
+    run = (
+        db.query(ProductionScheduleRun)
+        .order_by(ProductionScheduleRun.created_at.desc())
+        .first()
+    )
+    if not run:
+        raise HTTPException(status_code=404, detail="No executions found")
+    return run
 
 @router.get("/{run_id}", response_model=ProductionScheduleRunResponse)
 def get_run(run_id: int, db: Session = Depends(get_db)):
@@ -63,3 +73,4 @@ def delete_run(run_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Execution and related data deleted successfully"}
+

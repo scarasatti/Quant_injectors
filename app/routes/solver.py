@@ -57,11 +57,11 @@ def solve_jobs(
         for j, job_j in enumerate(jobs_data):
             if i != j:
                 setup = db.query(Setup).filter_by(
-                    produto_de=job_i.fk_id_product,
-                    produto_para=job_j.fk_id_product
+                    from_product=job_i.fk_id_product,
+                    to_product=job_j.fk_id_product
                 ).first()
                 if setup:
-                    setup_time[i][j] = setup.tempo_setup
+                    setup_time[i][j] = setup.setup_time
                 else:
                     setups_faltando.append(f"{job_i.product.name} ➜ {job_j.product.name}")
 

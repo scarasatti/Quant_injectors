@@ -14,7 +14,7 @@ class ProductResume(BaseModel):
 
 class SetupBatchItem(BaseModel):
     product_id: int
-    tempo_setup: int
+    setup_time: int
 
 class SetupBatchCreate(BaseModel):
     product_ref: int
@@ -33,8 +33,8 @@ class SetupTrocaResponse(SetupBase):
         from_attributes = True
 
 class SetupResumeResponse(BaseModel):
-    tempo_setup: int
-    produto_destino: ProductResume
+    setup_time: int
+    pair_product: ProductResume
 
     class Config:
         from_attributes = True
