@@ -8,7 +8,7 @@ from app.schemas.setup_schema import (SetupResumeResponse, ProductResume, SetupT
 from app.models.product import Product
 from sqlalchemy.orm import joinedload
 
-router = APIRouter(prefix="/setup_trocas", tags=["SetupTrocas"])
+router = APIRouter(prefix="/setup_trocas")
 
 @router.post("/", response_model=SetupTrocaResponse)
 def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db)):
