@@ -10,11 +10,33 @@ from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpBinary, value
 import numpy as np
 from app.auth.auth_bearer import get_current_user
 from app.models.user import User
+from fastapi.responses import StreamingResponse
+from app.utils.sse import register_user, unregister_user
+from app.utils.sse import send_event
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
+@router.get("/stream")
+async def stream_updates(user_id: str):
+    queue = register_user(user_id)
+
+    async def event_generator():
+        try:
+            while True:
+                data = await queue.get()
+                yield f"data: {data}\n\n"
+        except asyncio.CancelledError:
+            pass
+        finally:
+            unregister_user(user_id)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 @router.post("/solve")
-def solve_jobs(
+async def solve_jobs(
     job_ids: list[int],
     sequencing_date: Optional[datetime] = Query(default=None),
     machine_availability: int = Query(default=100, ge=1, le=100),
@@ -89,7 +111,14 @@ def solve_jobs(
     for i in jobs:
         model += start[i] + processing_time[i] - tardy[i] + early[i] == due_time[i]
 
-    model.solve()
+    executor = ThreadPoolExecutor(max_workers=1)
+
+    def resolver_modelo(modelo):
+        print("🔧 Resolvendo modelo com", len(modelo.variables()), "variáveis")
+        modelo.solve()
+        return modelo
+
+    model = await asyncio.get_event_loop().run_in_executor(executor, resolver_modelo, model)
 
     jobs_ordenados = sorted(jobs, key=lambda i: value(start[i]))
     resultado = []
@@ -118,6 +147,9 @@ def solve_jobs(
         setup_count=len(jobs) - 1,
         optimized_setups=sum(1 for (i, j) in x if i != j and value(x[(i, j)]) > 0.5)
     )
+
+    user_id = str(jobs_data[0].client.id)  # ou algo que identifique o usuário na sessão
+    await send_event(user_id, "Sequenciamento finalizado.")
 
     return {
         "sequencing_date": sequencing_date.isoformat(),

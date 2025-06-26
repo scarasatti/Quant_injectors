@@ -14,14 +14,14 @@ from app.routes import (
     upload_setup_matrix_routes,
     solver,
     production_schedule,
-    db_setup
+    db_setup,
 )
+from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
 from fastapi_utils.tasks import repeat_every
 from contextlib import asynccontextmanager
 from app.database import get_db
 from app.models.user_session import UserSession
-from datetime import datetime
 from fastapi.middleware.cors import CORSMiddleware
 
 @asynccontextmanager
@@ -43,6 +43,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 app.include_router(interprise_routes.router, tags=["Enterprises"])
 app.include_router(user_routes.router, tags=["Users"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
