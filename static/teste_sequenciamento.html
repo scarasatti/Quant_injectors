@@ -1,68 +1,85 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Sequenciamento - Teste</title>
-</head>
-<body>
-  <h2>Status: <span id="status">Aguardando...</span></h2>
+<h2>Status: <span id="status">Aguardando...</span></h2>
+<button onclick="startSequenciamento()">Iniciar Sequenciamento (Jobs fixos)</button>
 
-  <button onclick="startSequenciamento()">Iniciar Sequenciamento (Jobs fixos)</button>
+<script>
+  const userId = "1";
+  const jobIds = [1, 2, 3, ... 12];
+  const sequencingDate = "2024-11-22T12:00:00";
+  const machineAvailability = 100;
 
-  <script>
-    const userId = "1";
-    const jobIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    const sequencingDate = "2024-11-22T12:00:00";
-    const machineAvailability = 100;
+  let source;
+  let sequencingDone = false;           // Flag booleana para conclusão
+  let finalObjectiveValue = null;       // Armazena objetivo final
 
-    let source;
+  function conectarSSE() {
+    if (source) source.close();
+    source = new EventSource(`/sequenciamento/sequenciamento/stream?user_id=${userId}`);
+    document.getElementById("status").innerText = "Aguardando resposta do servidor...";
 
-    function conectarSSE() {
-      if (source) source.close();
+    // Evento SSE de mensagem
+    source.onmessage = function(event) {
+      if (event.data === "true") {  // supondo "true" indica fim
+        sequencingDone = true;
+        console.log("✅ Evento final recebido via SSE.");
+        source.close();  // Fecha SSE ao concluir:contentReference[oaicite:5]{index=5}
 
-      source = new EventSource(`/sequenciamento/sequenciamento/stream?user_id=${userId}`);
-      document.getElementById("status").innerText = "Aguardando resposta do servidor...";
-
-      source.onmessage = function(event) {
-        document.getElementById("status").innerText = event.data;
-        console.log("✅ Evento recebido:", event.data);
-      };
-
-      source.onerror = function(error) {
-        document.getElementById("status").innerText = "Erro na conexão com SSE";
-        console.error("❌ Erro SSE:", error);
-        source.close();
-      };
-    }
-
-    async function startSequenciamento() {
-      conectarSSE();
-
-      try {
-        const url = `/sequenciamento/sequenciamento/solve?sequencing_date=${encodeURIComponent(sequencingDate)}&machine_availability=${machineAvailability}`;
-
-        const response = await fetch(url, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(jobIds)  // ✅ lista direta — ESSENCIAL
-        });
-
-        const data = await response.json();
-
-        if (!response.ok) {
-          document.getElementById("status").innerText = `Erro: ${JSON.stringify(data)}`;
+        // Atualiza status final se já temos o objetivo
+        if (finalObjectiveValue !== null) {
+          document.getElementById("status").innerText =
+            `Sequenciamento finalizado. Objetivo: ${finalObjectiveValue}`;
         } else {
-          document.getElementById("status").innerText = `Sequenciamento finalizado. Objetivo: ${data.objective_value}`;
-          console.log("🟢 Resposta da API:", data);
+          document.getElementById("status").innerText = "Sequenciamento finalizado. (aguardando objetivo)";
         }
-
-      } catch (err) {
-        console.error("❌ Erro na requisição:", err);
-        document.getElementById("status").innerText = "Erro ao enviar dados";
+      } else {
+        // Eventos intermediários de progresso
+        document.getElementById("status").innerText = event.data;
+        console.log("🔄 Evento SSE:", event.data);
       }
+    };
+
+    // Tratamento de erro SSE
+    source.onerror = function(error) {
+      document.getElementById("status").innerText = "Erro na conexão com SSE";
+      console.error("❌ Erro SSE:", error);
+      source.close();
+    };
+  }
+
+  async function startSequenciamento() {
+    conectarSSE();  // inicia conexão SSE
+
+    try {
+      const url = `/sequenciamento/sequenciamento/solve?sequencing_date=${encodeURIComponent(sequencingDate)}&machine_availability=${machineAvailability}`;
+      const response = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(jobIds)
+      });
+
+      const data = await response.json();
+      finalObjectiveValue = data.objective_value;  // guarda valor objetivo
+
+      if (!response.ok) {
+        document.getElementById("status").innerText = `Erro: ${JSON.stringify(data)}`;
+      } else {
+        // Espera até receber o sinal de conclusão via SSE
+        await new Promise(resolve => {
+          const interval = setInterval(() => {
+            if (sequencingDone) {
+              clearInterval(interval);
+              resolve();
+            }
+          }, 100);
+        });
+        // Agora sim, atualiza status final com o objetivo
+        document.getElementById("status").innerText =
+          `Sequenciamento finalizado. Objetivo: ${data.objective_value}`;
+        console.log("🟢 Resposta da API:", data);
+      }
+
+    } catch (err) {
+      console.error("❌ Erro na requisição:", err);
+      document.getElementById("status").innerText = "Erro ao enviar dados";
     }
-  </script>
-</body>
-</html>
+  }
+</script>

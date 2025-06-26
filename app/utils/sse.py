@@ -10,7 +10,9 @@ def register_user(user_id: str) -> asyncio.Queue:
 def unregister_user(user_id: str):
     sse_event_queues.pop(user_id, None)
 
-async def send_event(user_id: str, message: str):
+async def send_event(user_id: str, message: str) -> bool:
     queue = sse_event_queues.get(user_id)
     if queue:
         await queue.put(message)
+        return True
+    return False
