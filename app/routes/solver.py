@@ -21,6 +21,7 @@ router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 @router.get("/stream")
 async def stream_updates(user_id: str):
     queue = register_user(user_id)
+    await send_event(user_id, "Conexão SSE estabelecida.")
 
     async def event_generator():
         try:
