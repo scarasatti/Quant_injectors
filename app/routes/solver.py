@@ -12,7 +12,7 @@ from app.auth.auth_bearer import get_current_user
 from app.models.user import User
 from fastapi.responses import StreamingResponse
 from app.utils.sse import register_user, unregister_user
-from app.utils.sse import send_event
+from app.utils.sse import send_event, set_processing, is_processing
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
@@ -21,7 +21,8 @@ router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 @router.get("/stream")
 async def stream_updates(user_id: str):
     queue = register_user(user_id)
-    await send_event(user_id, "Conexão SSE estabelecida.")
+
+    await send_event(user_id, is_processing(user_id))
 
     async def event_generator():
         try:
@@ -35,14 +36,14 @@ async def stream_updates(user_id: str):
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-
 @router.post("/solve")
 async def solve_jobs(
     job_ids: list[int],
     sequencing_date: Optional[datetime] = Query(default=None),
     machine_availability: int = Query(default=100, ge=1, le=100),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
+
     jobs_data = db.query(Job).filter(Job.id.in_(job_ids)).all()
 
     if len(jobs_data) != len(job_ids):
@@ -114,6 +115,15 @@ async def solve_jobs(
 
     executor = ThreadPoolExecutor(max_workers=1)
 
+    user_id = str(jobs_data[0].client.id)
+
+
+    if is_processing(user_id):
+        raise HTTPException(status_code=409, detail="Já existe um sequenciamento em andamento.")
+
+    set_processing(user_id, True)
+    await send_event(user_id, True)
+
     def resolver_modelo(modelo):
         print("🔧 Resolvendo modelo com", len(modelo.variables()), "variáveis")
         modelo.solve()
@@ -149,8 +159,10 @@ async def solve_jobs(
         optimized_setups=sum(1 for (i, j) in x if i != j and value(x[(i, j)]) > 0.5)
     )
 
-    user_id = str(jobs_data[0].client.id)  # ou algo que identifique o usuário na sessão
+
     await send_event(user_id, "Sequenciamento finalizado.")
+    await send_event(user_id, False)
+    set_processing(user_id, False)
 
     return {
         "sequencing_date": sequencing_date.isoformat(),
