@@ -18,8 +18,8 @@ async def send_event(user_id: str, message) -> bool:
     queue = sse_event_queues.get(user_id)
     if queue:
         await queue.put(json.dumps(message))  # manda booleano ou string
-        return True
-    return False
+        return False
+    return True
 
 def set_processing(user_id: str, value: bool):
     sse_status[user_id] = value
