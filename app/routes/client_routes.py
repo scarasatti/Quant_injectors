@@ -6,7 +6,7 @@ from app.schemas.client_schema import ClientCreate, ClientUpdate, ClientResponse
 
 router = APIRouter(prefix="/clients", tags=["Clients"])
 
-@router.post("/", response_model=ClientResponse)
+@router.post("", response_model=ClientResponse)
 def create_client(
     client: ClientCreate,
     db: Session = Depends(get_db),
