@@ -16,7 +16,7 @@ def create_job(job: JobCreate, db: Session = Depends(get_db)):
     db.refresh(db_job)
     return db_job
 
-@router.get("/", response_model=list[JobResponse])
+@router.get("", response_model=list[JobResponse])
 def list_jobs(db: Session = Depends(get_db)):
     return db.query(Job).all()
 
