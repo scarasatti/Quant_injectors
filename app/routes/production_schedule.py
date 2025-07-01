@@ -38,7 +38,7 @@ def create_schedule(
     return run
 
 
-@router.get("/", response_model=List[ProductionScheduleRunResponse])
+@router.get("", response_model=List[ProductionScheduleRunResponse])
 def list_runs(db: Session = Depends(get_db)):
     return db.query(ProductionScheduleRun).order_by(ProductionScheduleRun.created_at.desc()).all()
 
