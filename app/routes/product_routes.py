@@ -7,7 +7,7 @@ from app.auth.auth_bearer import get_current_user
 from app.models.user import User
 router = APIRouter(prefix="/products", tags=["Products"])
 
-@router.post("/", response_model=ProductResponse)
+@router.post("", response_model=ProductResponse)
 def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db_product = Product(**product.model_dump())
     db.add(db_product)

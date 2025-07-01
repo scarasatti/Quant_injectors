@@ -16,7 +16,7 @@ from app.models.user import User
 router = APIRouter(prefix="/production-schedule", tags=["Production Schedule"])
 
 
-@router.post("/", response_model=ProductionScheduleRunResponse)
+@router.post("", response_model=ProductionScheduleRunResponse)
 def create_schedule(
     run_data: ProductionScheduleRunCreate,
     results: List[ProductionScheduleResultCreate],

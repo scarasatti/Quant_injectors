@@ -10,7 +10,7 @@ from sqlalchemy.orm import joinedload
 
 router = APIRouter(prefix="/setup_trocas")
 
-@router.post("/", response_model=SetupTrocaResponse)
+@router.post("", response_model=SetupTrocaResponse)
 def create_setup(setup: SetupTrocaCreate, db: Session = Depends(get_db)):
 
     existing = db.query(Setup).filter_by(

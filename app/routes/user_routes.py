@@ -10,7 +10,7 @@ from app.auth.auth_bearer import get_current_user
 router = APIRouter(prefix="/users", tags=["Users"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-@router.post("/", response_model=UserOut)
+@router.post("", response_model=UserOut)
 def create_user(user: UserCreate, db: Session = Depends(get_db)):
     token_entry = db.query(AccessToken).filter_by(token=user.token, used=False).first()
     if not token_entry:

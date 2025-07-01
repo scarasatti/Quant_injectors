@@ -8,7 +8,7 @@ from app.models.user import User
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 
-@router.post("/", response_model=JobResponse)
+@router.post("", response_model=JobResponse)
 def create_job(job: JobCreate, db: Session = Depends(get_db)):
     db_job = Job(**job.model_dump())
     db.add(db_job)

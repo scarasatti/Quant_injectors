@@ -17,7 +17,7 @@ def get_db():
     finally:
         db.close()
 
-@router.post("/", response_model=EnterpriseOut)
+@router.post("", response_model=EnterpriseOut)
 def create_enterprise(data: EnterpriseCreate, db: Session = Depends(get_db)):
     if db.query(Enterprise).filter_by(name=data.name).first():
         raise HTTPException(status_code=400, detail="Empresa já cadastrada.")
