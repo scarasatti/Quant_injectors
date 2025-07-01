@@ -7,7 +7,7 @@ sse_status: dict[str, bool] = {}
 def register_user(user_id: str) -> asyncio.Queue:
     queue = asyncio.Queue()
     sse_event_queues[user_id] = queue
-    sse_status.setdefault(user_id, False)  # default False se não existe
+    sse_status.setdefault(user_id, True)  # default False se não existe
     return queue
 
 def unregister_user(user_id: str):
