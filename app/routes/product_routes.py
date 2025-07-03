@@ -5,6 +5,8 @@ from app.models.product import Product
 from app.schemas.product_schema import ProductCreate, ProductUpdate, ProductResponse
 from app.auth.auth_bearer import get_current_user
 from app.models.user import User
+from app.models.setup import Setup
+from app.models.job import Job
 router = APIRouter(prefix="/products", tags=["Products"])
 
 @router.post("", response_model=ProductResponse)
@@ -39,9 +41,21 @@ def update_product(product_id: int, product: ProductUpdate, db: Session = Depend
 
 @router.delete("/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db)):
+    # Busca o produto
     db_product = db.query(Product).get(product_id)
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
+
+    # Deleta setups relacionados
+    db.query(Setup).filter(
+        (Setup.from_product == product_id) | (Setup.to_product == product_id)
+    ).delete(synchronize_session=False)
+
+    # Deleta jobs relacionados (opcional, depende da regra de negócio)
+    db.query(Job).filter(Job.fk_id_product == product_id).delete(synchronize_session=False)
+
+    # Deleta o produto
     db.delete(db_product)
     db.commit()
-    return {"message": "Product deleted"}
+
+    return {"message": "Product and related setups deleted"}
