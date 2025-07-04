@@ -122,6 +122,7 @@ def get_setups_simplificado(product_id: int, db: Session = Depends(get_db)):
 
     return [
         SetupResumeResponse(
+            id=s.id,
             setup_time=s.setup_time,
             pair_product=ProductResume(
                 id=s.to_product_rel.id,

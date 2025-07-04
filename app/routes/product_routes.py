@@ -18,6 +18,8 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
     db.refresh(db_product)
 
     existing_products = db.query(Product).filter(Product.id != db_product.id).all()
+    setup_self = Setup(from_product=db_product.id, to_product=db_product.id, setup_time=0)
+    db.add(setup_self)
 
     if existing_products:
         for other in existing_products:
@@ -28,7 +30,7 @@ def create_product(product: ProductCreate, db: Session = Depends(get_db)):
             setup_2 = Setup(from_product=other.id, to_product=db_product.id, setup_time=0)
             db.add(setup_2)
 
-        db.commit()
+    db.commit()
 
     return db_product
 
@@ -56,20 +58,17 @@ def update_product(product_id: int, product: ProductUpdate, db: Session = Depend
 
 @router.delete("/{product_id}")
 def delete_product(product_id: int, db: Session = Depends(get_db)):
-    # Busca o produto
+
     db_product = db.query(Product).get(product_id)
     if not db_product:
         raise HTTPException(status_code=404, detail="Product not found")
 
-    # Deleta setups relacionados
     db.query(Setup).filter(
         (Setup.from_product == product_id) | (Setup.to_product == product_id)
     ).delete(synchronize_session=False)
 
-    # Deleta jobs relacionados (opcional, depende da regra de negócio)
     db.query(Job).filter(Job.fk_id_product == product_id).delete(synchronize_session=False)
 
-    # Deleta o produto
     db.delete(db_product)
     db.commit()
 

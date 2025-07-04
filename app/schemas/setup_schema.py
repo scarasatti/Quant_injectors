@@ -33,6 +33,7 @@ class SetupTrocaResponse(SetupBase):
         from_attributes = True
 
 class SetupResumeResponse(BaseModel):
+    id: int
     setup_time: int
     pair_product: ProductResume
 
