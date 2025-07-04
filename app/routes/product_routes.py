@@ -11,10 +11,25 @@ router = APIRouter(prefix="/products", tags=["Products"])
 
 @router.post("", response_model=ProductResponse)
 def create_product(product: ProductCreate, db: Session = Depends(get_db)):
+    
     db_product = Product(**product.model_dump())
     db.add(db_product)
     db.commit()
     db.refresh(db_product)
+
+    existing_products = db.query(Product).filter(Product.id != db_product.id).all()
+
+    if existing_products:
+        for other in existing_products:
+
+            setup_1 = Setup(from_product=db_product.id, to_product=other.id, setup_time=0)
+            db.add(setup_1)
+
+            setup_2 = Setup(from_product=other.id, to_product=db_product.id, setup_time=0)
+            db.add(setup_2)
+
+        db.commit()
+
     return db_product
 
 @router.get("/", response_model=list[ProductResponse])
