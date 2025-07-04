@@ -11,6 +11,9 @@ class ProductResume(BaseModel):
     id: int
     name: str
 
+class SetupBatchUpdateItem(BaseModel):
+    id: int
+    setup_time: int
 
 class SetupBatchItem(BaseModel):
     product_id: int
@@ -39,3 +42,6 @@ class SetupResumeResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SetupBatchUpdateRequest(BaseModel):
+    updates: List[SetupBatchUpdateItem]
