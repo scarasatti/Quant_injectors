@@ -39,7 +39,7 @@ async def stream_updates(user_id: str):
 @router.post("/solve")
 async def solve_jobs(
     job_ids: list[int],
-    sequencing_date: Optional[datetime] = Query(default=None),
+    sequencing_date: datetime = Query(..., description="Data e hora de início do sequenciamento"),
     machine_availability: int = Query(default=100, ge=1, le=100),
     db: Session = Depends(get_db),
 ):
@@ -49,11 +49,7 @@ async def solve_jobs(
     if len(jobs_data) != len(job_ids):
         raise HTTPException(status_code=404, detail="Algum job não foi encontrado")
 
-    if sequencing_date is None:
-        today = datetime.now().date()
-        sequencing_date = datetime.combine(today, time(hour=12))
-    else:
-        sequencing_date = sequencing_date.replace(hour=12, minute=0, second=0, microsecond=0)
+    sequencing_date = sequencing_date.replace(microsecond=0)
 
     jobs = list(range(len(jobs_data)))
 
