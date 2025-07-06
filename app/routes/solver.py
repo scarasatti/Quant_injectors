@@ -6,7 +6,7 @@ from app.database import get_db
 from app.models.job import Job
 from app.models.setup import Setup
 from app.utils.save_schedule import save_solver_result_to_db
-from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpBinary, value
+from pulp import LpMinimize, LpProblem, LpVariable, lpSum, LpBinary, value, PULP_CBC_CMD
 import numpy as np
 from app.auth.auth_bearer import get_current_user
 from app.models.user import User
@@ -121,8 +121,8 @@ async def solve_jobs(
     await send_event(user_id, True)
 
     def resolver_modelo(modelo):
-        print("🔧 Resolvendo modelo com", len(modelo.variables()), "variáveis")
-        modelo.solve()
+        solver = PULP_CBC_CMD(msg=True, timeLimit=3600)
+        modelo.solve(solver)
         return modelo
 
     model = await asyncio.get_event_loop().run_in_executor(executor, resolver_modelo, model)
