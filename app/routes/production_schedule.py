@@ -25,7 +25,7 @@ def create_schedule(
 ):
     run = ProductionScheduleRun(**run_data.dict(), created_at=datetime.utcnow())
     db.add(run)
-    db.flush()  # garante run.id para os relacionamentos
+    db.flush()
 
     for r in results:
         db.add(ProductionScheduleResult(**r.dict(), run_id=run.id))
@@ -59,7 +59,6 @@ def get_run(run_id: int, db: Session = Depends(get_db)):
     if not run:
         raise HTTPException(status_code=404, detail="Execution not found")
     return run
-
 
 @router.delete("/{run_id}")
 def delete_run(run_id: int, db: Session = Depends(get_db)):

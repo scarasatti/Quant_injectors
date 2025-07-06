@@ -140,7 +140,7 @@ async def solve_jobs(
         })
 
     for job in jobs_data:
-        job.processed = True
+        db.delete(job)
     db.commit()
 
     run_saved = save_solver_result_to_db(
