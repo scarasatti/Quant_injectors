@@ -15,6 +15,9 @@ from app.utils.sse import register_user, unregister_user
 from app.utils.sse import send_event, set_processing, is_processing
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from io import StringIO
+import sys
+from app.utils.email_sender import send_solver_report
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
@@ -129,6 +132,7 @@ async def solve_jobs(
 
     jobs_ordenados = sorted(jobs, key=lambda i: value(start[i]))
     resultado = []
+
     for posicao, i in enumerate(jobs_ordenados):
         resultado.append({
             "job_id": jobs_data[i].id,
@@ -138,6 +142,29 @@ async def solve_jobs(
             "produto": jobs_data[i].product.name,
             "cliente": jobs_data[i].client.name,
         })
+    buffer = StringIO()
+    sys.stdout = buffer
+
+    # Impressão do relatório
+    print("📊 RELATÓRIO DO SOLVER - SISTEMA QUANT")
+    print("-" * 40)
+    print(f"Data de sequenciamento: {sequencing_date}")
+    print(f"Valor ótimo da função objetivo: {value(model.objective):.2f}")
+    print("\nOrdem dos Jobs:")
+
+    for posicao, i in enumerate(jobs_ordenados):
+        print(
+            f"{posicao + 1}º - Job '{jobs_data[i].name}' | Produto: {jobs_data[i].product.name} | Cliente: {jobs_data[i].client.name}")
+        print(f"     Início: {value(start[i]):.2f}h | Atraso: {value(tardy[i]):.2f}h\n")
+
+    # Fim da captura
+    sys.stdout = sys.__stdout__
+    log_text = buffer.getvalue()
+
+    # Envio do relatório
+    send_solver_report("scarasatti@gmail.com", log_text)
+
+
 
     for job in jobs_data:
         db.delete(job)
