@@ -162,7 +162,7 @@ async def solve_jobs(
     log_text = buffer.getvalue()
 
     # Envio do relatório
-    send_solver_report("scarasatti@gmail.com", log_text)
+    send_solver_report("renato.nastaro@quantpartners.com.br", log_text)
 
 
 
