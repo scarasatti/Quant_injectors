@@ -2,63 +2,71 @@ from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
 from decimal import Decimal
 import pandas as pd
+
 from app.database import get_db
 from app.models.product import Product
+from app.models.setup import Setup
 from app.auth.auth_bearer import get_current_user
-from app.models.user import User
 
 router = APIRouter(prefix="/upload")
 
 @router.post("/products-xlsx")
 async def upload_products_xlsx(file: UploadFile = File(...), db: Session = Depends(get_db)):
     if not file.filename.endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="O arquivo precisa ser .xlsx")
+        raise HTTPException(status_code=400, detail="The file must be a .xlsx format.")
 
     try:
         contents = await file.read()
         df = pd.read_excel(contents, engine="openpyxl")
 
-        # Normaliza nomes de colunas (remove espaços invisíveis)
+        # Normalize column names (strip leading/trailing whitespace)
         df.columns = df.columns.str.strip()
 
-        produtos_adicionados = 0
-        produtos_ignorados = 0
+        added_products = 0
+        ignored_products = 0
 
         for _, row in df.iterrows():
-            nome = str(row.get("produto")).strip()
-            ciclo = row.get("ciclo")
-            gargalo = row.get("Tempo de Produção Pós Gargalo")
-            refugo = row.get("refugo")
+            name = str(row.get("produto")).strip()
+            cycle = row.get("ciclo")
+            bottleneck = row.get("Tempo de Produção Pós Gargalo")
+            scrap = row.get("refugo")
 
-            # Ignora linhas incompletas
-            if not nome or pd.isna(ciclo) or pd.isna(gargalo):
+            if not name or pd.isna(cycle) or pd.isna(bottleneck):
                 continue
 
-            # Verifica se já existe um produto com o mesmo nome
-            produto_existente = db.query(Product).filter(Product.name == nome).first()
-
-            if produto_existente:
-                produtos_ignorados += 1
+            existing = db.query(Product).filter(Product.name == name).first()
+            if existing:
+                ignored_products += 1
                 continue
 
-            # Cria novo produto
-            produto = Product(
-                name=nome,
-                cycle=int(ciclo),
-                bottleneck=int(gargalo),
-                scrap=Decimal(refugo) if not pd.isna(refugo) else Decimal(0)
+            product = Product(
+                name=name,
+                cycle=int(cycle),
+                bottleneck=int(bottleneck),
+                scrap=Decimal(scrap) if not pd.isna(scrap) else Decimal(0)
             )
+            db.add(product)
+            db.commit()
+            db.refresh(product)
+            added_products += 1
 
-            db.add(produto)
-            produtos_adicionados += 1
+            # Create setups for the new product
+            all_others = db.query(Product).filter(Product.id != product.id).all()
 
-        db.commit()
+            # Self-setup
+            db.add(Setup(from_product=product.id, to_product=product.id, setup_time=0))
+
+            for other in all_others:
+                db.add(Setup(from_product=product.id, to_product=other.id, setup_time=0))
+                db.add(Setup(from_product=other.id, to_product=product.id, setup_time=0))
+
+            db.commit()
 
         return {
-            "message": "Upload finalizado.",
-            "produtos_adicionados": produtos_adicionados,
-            "produtos_ignorados": produtos_ignorados
+            "message": "Upload completed.",
+            "added_products": added_products,
+            "ignored_products": ignored_products
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao processar o arquivo: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error processing file: {str(e)}")
