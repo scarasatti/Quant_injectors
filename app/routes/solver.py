@@ -73,7 +73,7 @@ async def solve_jobs(
 
     weight = [job.client.priority for job in jobs_data]
 
-    setup_time = np.zeros((len(jobs_data), len(jobs_data)), dtype=int)
+    setup_time = np.zeros((len(jobs_data), len(jobs_data)), dtype=float)
     setups_faltando = []
 
     for i, job_i in enumerate(jobs_data):
@@ -84,7 +84,7 @@ async def solve_jobs(
                     to_product=job_j.fk_id_product
                 ).first()
                 if setup:
-                    setup_time[i][j] = setup.setup_time
+                    setup_time[i][j] = setup.setup_time / 3600
                 else:
                     setups_faltando.append(f"{job_i.product.name} ➜ {job_j.product.name}")
 
@@ -178,8 +178,11 @@ async def solve_jobs(
         start=start,
         tardy=tardy,
         processing_time=processing_time,
-        setup_count=len(jobs) - 1,
-        optimized_setups=sum(1 for (i, j) in x if i != j and value(x[(i, j)]) > 0.5)
+        setup_count=len(jobs),
+        optimized_setups=sum(
+            1 for i in range(len(jobs_ordenados) - 1)
+            if setup_time[jobs_ordenados[i]][jobs_ordenados[i + 1]] > 0
+        )
     )
 
 

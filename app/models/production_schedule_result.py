@@ -20,7 +20,7 @@ class ProductionScheduleResult(Base):
     completion_time = Column(Time)
     billing_date = Column(Date)
 
-    status = Column(String)  # "On Time" or "Late"
+    status = Column(String)
     expected_revenue = Column(Float)
 
     run = relationship("ProductionScheduleRun", back_populates="results")

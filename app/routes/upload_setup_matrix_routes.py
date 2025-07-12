@@ -19,11 +19,11 @@ def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends
         contents = file.file.read()
         df = pd.read_excel(BytesIO(contents), index_col=0)
 
-        print("📊 DataFrame carregado:")
+        print("DataFrame carregado:")
         print(df)
 
         produtos = list(df.columns)
-        print(f"🧾 Produtos detectados: {produtos}")
+        print(f"Produtos detectados: {produtos}")
 
         # Mapeia os nomes para os IDs dos produtos
         produtos_db = db.query(Product).filter(Product.name.in_(produtos)).all()
@@ -35,7 +35,7 @@ def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends
                 j_id = nome_para_id.get(j_nome)
 
                 if i_id is None or j_id is None:
-                    print(f"❌ Produto não encontrado no banco: {i_nome} ou {j_nome}")
+                    print(f"Produto não encontrado no banco: {i_nome} ou {j_nome}")
                     continue
 
                 tempo_raw = df.loc[i_nome, j_nome]
@@ -46,26 +46,30 @@ def upload_setup_matrix_xlsx(file: UploadFile = File(...), db: Session = Depends
                 try:
                     tempo = int(tempo_raw)
                 except ValueError:
-                    print(f"⚠️ Tempo inválido para {i_nome} → {j_nome}: {tempo_raw}")
+                    print(f"Tempo inválido para {i_nome} → {j_nome}: {tempo_raw}")
                     continue
 
-                print(f"➡️ {i_nome} → {j_nome} = {tempo}")
+                print(f"{i_nome} → {j_nome} = {tempo} segundos")
 
-                # Cadastra apenas o par explícito da planilha, sem espelhamento
-                existe = db.query(Setup).filter(
+                # Cria ou atualiza o setup
+                setup = db.query(Setup).filter(
                     Setup.from_product == i_id,
                     Setup.to_product == j_id
                 ).first()
 
-                if not existe:
+                if setup:
+                    setup.setup_time = tempo  # Atualiza
+                    print(f"Setup atualizado: {i_nome} → {j_nome}")
+                else:
                     db.add(Setup(
                         from_product=i_id,
                         to_product=j_id,
                         setup_time=tempo
                     ))
+                    print(f"Setup criado: {i_nome} → {j_nome}")
 
         db.commit()
-        return {"message": "Setups cadastrados com base na planilha. Apenas os valores explícitos foram processados."}
+        return {"message": "Setups cadastrados ou atualizados com sucesso com base na planilha."}
 
     except Exception as e:
         traceback.print_exc()
