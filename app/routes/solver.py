@@ -1,7 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from datetime import datetime, time
-from typing import Optional
 from app.database import get_db
 from app.models.job import Job
 from app.models.setup import Setup
@@ -18,6 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from io import StringIO
 import sys
 from app.utils.email_sender import send_solver_report
+import math
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
@@ -39,6 +39,29 @@ async def stream_updates(user_id: str):
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
+def calculate_processing_time(job, sequencing_date: datetime, machine_availability: int, weight: list, job_index: int):
+    # Cálculo do refugo
+    scrap_percent = float(job.product.scrap)
+    scrap_factor = 1 + scrap_percent / 100
+    demand_with_scrap = job.demand * scrap_factor
+
+    # fator de disponibilidade
+    available_factor = (100 - machine_availability) / 100 + 1
+
+    # Gargalo
+    cycle_bottleneck = job.product.cycle * available_factor
+    in_bottleneck_time = int(demand_with_scrap * cycle_bottleneck)
+    post_bottleneck_time = job.product.bottleneck * available_factor
+    total_bottleneck_time = int(demand_with_scrap * post_bottleneck_time)
+    in_bottleneck_time_hours = math.ceil((in_bottleneck_time / 3600) * 10) / 10
+
+    # Prazos
+    promised_date = job.promised_date
+    deadline = (promised_date - sequencing_date).total_seconds() / 3600
+    deadline_in_bottleneck = math.ceil((deadline - total_bottleneck_time / 3600) * 10) / 10
+
+    return round( in_bottleneck_time_hours, 2), round(deadline_in_bottleneck, 2)
+
 @router.post("/solve")
 async def solve_jobs(
     job_ids: list[int],
@@ -49,32 +72,28 @@ async def solve_jobs(
 
     jobs_data = db.query(Job).filter(Job.id.in_(job_ids)).all()
 
+    jobs = list(range(len(jobs_data)))
+
     if len(jobs_data) != len(job_ids):
         raise HTTPException(status_code=404, detail="Algum job não foi encontrado")
 
-    sequencing_date = sequencing_date.replace(microsecond=0)
-
-    jobs = list(range(len(jobs_data)))
-
-    fator_maquina = 1 + ((100 - machine_availability) / 100)
+    weight = [job.client.priority for job in jobs_data]
 
     processing_time = []
-    for job in jobs_data:
-        scrap_percentual = float(job.product.scrap)
-        fator_scrap = 1 + (scrap_percentual / 100)
-        demanda_com_refugo = job.demand * fator_scrap
-        tempo_horas_ajustado = (job.product.cycle * demanda_com_refugo) / 3600 * fator_maquina
-        processing_time.append(round(tempo_horas_ajustado))
+    due_time = []
 
-    due_time = [
-        max(int((job.promised_date.replace(hour=12, minute=0, second=0, microsecond=0) - sequencing_date).total_seconds() // 3600), 0)
-        for job in jobs_data
-    ]
+    for i, job in enumerate(jobs_data):
+        proc_time, real_due = calculate_processing_time(
+            job, sequencing_date, machine_availability, weight, i
+        )
+        processing_time.append(proc_time)
+        due_time.append(real_due)
 
     weight = [job.client.priority for job in jobs_data]
 
     setup_time = np.zeros((len(jobs_data), len(jobs_data)), dtype=float)
     setups_faltando = []
+
 
     for i, job_i in enumerate(jobs_data):
         for j, job_j in enumerate(jobs_data):
@@ -84,7 +103,7 @@ async def solve_jobs(
                     to_product=job_j.fk_id_product
                 ).first()
                 if setup:
-                    setup_time[i][j] = setup.setup_time / 3600
+                    setup_time[i][j] = math.ceil((setup.setup_time / 3600) * 10) / 10
                 else:
                     setups_faltando.append(f"{job_i.product.name} ➜ {job_j.product.name}")
 
@@ -145,26 +164,11 @@ async def solve_jobs(
     buffer = StringIO()
     sys.stdout = buffer
 
-    # Impressão do relatório
-    print("📊 RELATÓRIO DO SOLVER - SISTEMA QUANT")
-    print("-" * 40)
-    print(f"Data de sequenciamento: {sequencing_date}")
-    print(f"Valor ótimo da função objetivo: {value(model.objective):.2f}")
-    print("\nOrdem dos Jobs:")
-
-    for posicao, i in enumerate(jobs_ordenados):
-        print(
-            f"{posicao + 1}º - Job '{jobs_data[i].name}' | Produto: {jobs_data[i].product.name} | Cliente: {jobs_data[i].client.name}")
-        print(f"     Início: {value(start[i]):.2f}h | Atraso: {value(tardy[i]):.2f}h\n")
-
-    # Fim da captura
     sys.stdout = sys.__stdout__
     log_text = buffer.getvalue()
 
     # Envio do relatório
     send_solver_report("renato.nastaro@quantpartners.com.br", log_text)
-
-
 
     for job in jobs_data:
         db.delete(job)
@@ -185,7 +189,6 @@ async def solve_jobs(
         )
     )
 
-
     await send_event(user_id, "Sequenciamento finalizado.")
     await send_event(user_id, False)
     set_processing(user_id, False)
@@ -195,4 +198,3 @@ async def solve_jobs(
         "sequencia": resultado,
         "objective_value": value(model.objective)
     }
-
