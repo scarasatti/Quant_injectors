@@ -35,12 +35,12 @@ def download_setup_template(db: Session = Depends(get_db)):
             setup = db.query(Setup).filter_by(from_product=id_de, to_product=id_para).first()
 
             if setup:
-                matriz.at[nome_de, nome_para] = setup.tempo_setup
+                matriz.at[nome_de, nome_para] = setup.setup_time
             else:
                 # Tenta buscar o inverso, apenas para exibição (não altera lógica do modelo)
                 setup_inv = db.query(Setup).filter_by(from_product=id_para, to_product=id_de).first()
                 if setup_inv:
-                    matriz.at[nome_de, nome_para] = f"(inv) {setup_inv.tempo_setup}"
+                    matriz.at[nome_de, nome_para] = f"(inv) {setup_inv.setup_time}"
                 else:
                     matriz.at[nome_de, nome_para] = ""
 
