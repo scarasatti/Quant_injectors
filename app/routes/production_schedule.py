@@ -27,8 +27,44 @@ def create_schedule(
     db.add(run)
     db.flush()
 
+    sequencing_start = run_data.sequencing_start  # datetime vindo do request
+
     for r in results:
-        db.add(ProductionScheduleResult(**r.dict(), run_id=run.id))
+        # Buscar job original para obter a data prometida e duração
+        job = db.query(Job).filter_by(id=r.job_id).first()
+        if not job:
+            raise HTTPException(status_code=400, detail=f"Job ID {r.job_id} not found.")
+
+        # Calcular horários reais
+        start_time = sequencing_start + timedelta(hours=r.inicio_h)
+        end_time = start_time + timedelta(hours=job.total_time_hours)
+
+        # Calcular status com base na data prometida do job
+        status = "On Time" if end_time.date() <= job.promised_date.date() else "Late"
+
+        # Prever data de faturamento (exemplo: 3 dias após término real)
+        billing_date = end_time.date() + timedelta(days=3)
+
+        # Receita esperada
+        expected_revenue = round(job.demand * job.product_value, 2)
+
+        # Criar resultado ajustado
+        result = ProductionScheduleResult(
+            run_id=run.id,
+            job_id=r.job_id,
+            order_index=r.ordem,
+            client_name=job.client.name,
+            product_name=job.product.name,
+            quantity=job.demand,
+            scheduled_date=end_time.date(),  # data planejada (fim do job)
+            actual_date=end_time.date(),  # data real
+            completion_time=end_time.time(),
+            billing_date=billing_date,
+            status=status,
+            expected_revenue=expected_revenue
+        )
+
+        db.add(result)
 
     for r in revenue_by_day:
         db.add(PredictedRevenueByDay(**r.dict(), run_id=run.id))
