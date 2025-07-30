@@ -17,6 +17,7 @@ class ProductionScheduleResult(Base):
 
     scheduled_date = Column(Date)
     actual_date = Column(Date)
+    completion_date = Column(Date)
     completion_time = Column(Time)
     billing_date = Column(Date)
 

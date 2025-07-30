@@ -9,6 +9,7 @@ class ProductionScheduleResultBase(BaseModel):
     quantity: int
     scheduled_date: date
     actual_date: date
+    completion_date: date
     completion_time: time
     billing_date: date
     status: str

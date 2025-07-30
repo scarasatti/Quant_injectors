@@ -60,7 +60,7 @@ def calculate_processing_time(job, sequencing_date: datetime, machine_availabili
     deadline = (promised_date - sequencing_date).total_seconds() / 3600
     deadline_in_bottleneck = math.ceil((deadline - total_bottleneck_time / 3600) * 10) / 10
 
-    return round( in_bottleneck_time_hours, 2), round(deadline_in_bottleneck, 2)
+    return round( in_bottleneck_time_hours, 2), round(deadline_in_bottleneck, 2), round(total_bottleneck_time/3600, 2)
 
 @router.post("/solve")
 async def solve_jobs(
@@ -81,13 +81,15 @@ async def solve_jobs(
 
     processing_time = []
     due_time = []
+    post_bottleneck_times = []
 
     for i, job in enumerate(jobs_data):
-        proc_time, real_due = calculate_processing_time(
+        proc_time, real_due, bottleneck  = calculate_processing_time(
             job, sequencing_date, machine_availability, weight, i
         )
         processing_time.append(proc_time)
         due_time.append(real_due)
+        post_bottleneck_times.append(bottleneck)
 
     weight = [job.client.priority for job in jobs_data]
 
@@ -161,14 +163,6 @@ async def solve_jobs(
             "produto": jobs_data[i].product.name,
             "cliente": jobs_data[i].client.name,
         })
-    buffer = StringIO()
-    sys.stdout = buffer
-
-    sys.stdout = sys.__stdout__
-    log_text = buffer.getvalue()
-
-    # Envio do relatório
-    send_solver_report("renato.nastaro@quantpartners.com.br", log_text)
 
     for job in jobs_data:
         db.delete(job)
@@ -180,8 +174,8 @@ async def solve_jobs(
         jobs_data=jobs_data,
         ordem_execucao=jobs_ordenados,
         start=start,
-        tardy=tardy,
         processing_time=processing_time,
+        post_bottleneck_times=post_bottleneck_times,
         setup_count=len(jobs),
         optimized_setups=sum(
             1 for i in range(len(jobs_ordenados) - 1)
