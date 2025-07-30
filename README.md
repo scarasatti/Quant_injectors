@@ -31,3 +31,29 @@ uvicorn main:app --reload
     print(f"   Prazo    (h)                : {deadline}")
     print(f"   Prazo no gargalo (h)        : {deadline_in_bottleneck}")
     print(f"   Tempo total no gargalo      : {in_bottleneck_time_hours}")
+
+ 5. 
+   VALIDAÇÂO DO STATUS 
+    # DEBUG COMPLETO PARA O STATUS
+    print("\n=== AVALIAÇÃO DO STATUS DO JOB ===")
+    print(f"Job ID                       : {job.id}")
+    print(f"Cliente                      : {job.client.name}")
+    print(f"Produto                      : {job.product.name}")
+    print(f"Quantidade                   : {job.demand}")
+    print(f"Data Prometida               : {job.promised_date}")
+    print(f"Data Início Real             : {start_dt}")
+    print(f"Duração Processo             : {proc_time} horas")
+    print(f"Pós-Gargalo                  : {bottleneck} horas")
+    print(f"Momento de Conclusão         : {moment_conclusion} horas")
+    print(f"Momento de Conclusão Final   : {moment_conclusion_final} horas")
+    print(f"Conclusão Produção           : {production_completion}")
+
+ 6. # PRINT FINAL DO JOB
+        print("\n[JOB DEBUG FINAL]")
+        print(f"Promised Date     : {job.promised_date}")
+        print(f"Start (real)      : {start_dt}")
+        print(f"End (real)        : {production_completion}")
+        print(f"Status Calculado  : {status}")
+        print(f"Billing Date      : {billing_date}")
+        print(f"Expected Revenue  : {revenue}")
+        print("------------------------------------------------------")
