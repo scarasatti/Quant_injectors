@@ -175,7 +175,7 @@ async def solve_jobs(
         ordem_execucao=jobs_ordenados,
         start=start,
         processing_time=processing_time,
-        post_bottleneck_times=post_bottleneck_times,
+        bottleneck_times=post_bottleneck_times,
         setup_count=len(jobs),
         optimized_setups=sum(
             1 for i in range(len(jobs_ordenados) - 1)
