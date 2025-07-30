@@ -11,7 +11,9 @@ from app.models.predicted_revenue_by_day import PredictedRevenueByDay
 from app.schemas.production_schedule_run_schema import ProductionScheduleRunCreate, ProductionScheduleRunResponse
 from app.schemas.production_schedule_result_schema import ProductionScheduleResultCreate, ProductionScheduleResultResponse
 from app.schemas.predicted_revenue_byday_schema import PredictedRevenueByDayCreate, PredictedRevenueByDayResponse
+from datetime import datetime, timedelta, date
 from app.auth.auth_bearer import get_current_user
+from app.models.job import Job
 from app.models.user import User
 router = APIRouter(prefix="/production-schedule", tags=["Production Schedule"])
 
@@ -23,32 +25,44 @@ def create_schedule(
     revenue_by_day: List[PredictedRevenueByDayCreate],
     db: Session = Depends(get_db)
 ):
+    print("==== INICIANDO CRIAÇÃO DO SCHEDULE ====")
+    print(f"Recebidos: {len(results)} resultados | {len(revenue_by_day)} previsões de receita")
+
     run = ProductionScheduleRun(**run_data.dict(), created_at=datetime.utcnow())
     db.add(run)
     db.flush()
 
-    sequencing_start = run_data.sequencing_start  # datetime vindo do request
-
     for r in results:
-        # Buscar job original para obter a data prometida e duração
         job = db.query(Job).filter_by(id=r.job_id).first()
         if not job:
             raise HTTPException(status_code=400, detail=f"Job ID {r.job_id} not found.")
 
-        # Calcular horários reais
-        start_time = sequencing_start + timedelta(hours=r.inicio_h)
-        end_time = start_time + timedelta(hours=job.total_time_hours)
+        # Corrigir hora caso venha incompleta (HH:MM)
+        hora_padronizada = r.completion_time
+        if len(hora_padronizada.split(":")) == 2:
+            hora_padronizada += ":00"
 
-        # Calcular status com base na data prometida do job
-        status = "On Time" if end_time.date() <= job.promised_date.date() else "Late"
+        try:
+            actual_datetime = datetime.strptime(f"{r.actual_date} {hora_padronizada}", "%Y-%m-%d %H:%M:%S")
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=f"Erro ao interpretar horário de conclusão para job {r.job_id}: {str(e)}")
 
-        # Prever data de faturamento (exemplo: 3 dias após término real)
-        billing_date = end_time.date() + timedelta(days=3)
+        scheduled_datetime = datetime.strptime(f"{r.scheduled_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
 
-        # Receita esperada
+        status = "On Time" if actual_datetime <= scheduled_datetime else "Late"
+        billing_date = actual_datetime.date() + timedelta(days=3)
         expected_revenue = round(job.demand * job.product_value, 2)
 
-        # Criar resultado ajustado
+        # DEBUG PRINT
+        print("======= STATUS DEBUG =======")
+        print(f"JOB ID           : {r.job_id}")
+        print(f"Cliente          : {job.client.name}")
+        print(f"Produto          : {job.product.name}")
+        print(f"Data Agendada    : {scheduled_datetime}")
+        print(f"Data de Entrega  : {actual_datetime}")
+        print(f"Status Calculado : {status}")
+        print("============================")
+
         result = ProductionScheduleResult(
             run_id=run.id,
             job_id=r.job_id,
@@ -56,23 +70,26 @@ def create_schedule(
             client_name=job.client.name,
             product_name=job.product.name,
             quantity=job.demand,
-            scheduled_date=end_time.date(),  # data planejada (fim do job)
-            actual_date=end_time.date(),  # data real
-            completion_time=end_time.time(),
+            scheduled_date=scheduled_datetime.date(),
+            actual_date=actual_datetime.date(),
+            completion_time=actual_datetime.time(),
             billing_date=billing_date,
             status=status,
             expected_revenue=expected_revenue
         )
-
         db.add(result)
 
-    for r in revenue_by_day:
-        db.add(PredictedRevenueByDay(**r.dict(), run_id=run.id))
+    for rev in revenue_by_day:
+        revenue = PredictedRevenueByDay(
+            run_id=run.id,
+            day=rev.day,
+            expected_revenue=rev.expected_revenue
+        )
+        db.add(revenue)
 
     db.commit()
     db.refresh(run)
     return run
-
 
 @router.get("", response_model=List[ProductionScheduleRunResponse])
 def list_runs(db: Session = Depends(get_db)):
