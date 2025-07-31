@@ -18,11 +18,15 @@ def save_solver_result_to_db(
     setup_count: int,
     optimized_setups: int,
 ) -> ProductionScheduleRun:
+
     total_machine_hours = sum(processing_time)
+
     max_deadline_hours = max(
-        (job.promised_date - sequencing_date).total_seconds() / 3600
-        for job in jobs_data
+        value(start[i]) + processing_time[i] + bottleneck_times[i]
+        for i in range(len(jobs_data))
     )
+
+    machine_status = "On Time" if total_machine_hours >= max_deadline_hours else "Late"
 
     on_time_count = 0
     revenue_by_day = defaultdict(float)
@@ -32,9 +36,9 @@ def save_solver_result_to_db(
         setup_count=setup_count,
         optimized_setups=optimized_setups,
         on_time_jobs=0,
-        total_machine_hours=round(total_machine_hours, 2),
-        max_deadline_hours=round(max_deadline_hours, 2),
-        machine_status="On Time" if total_machine_hours <= max_deadline_hours else "Late",
+        total_machine_hours=int(total_machine_hours),
+        max_deadline_hours=int(max_deadline_hours),
+        machine_status=machine_status,
         created_at=datetime.utcnow()
     )
     db.add(run)
@@ -46,28 +50,19 @@ def save_solver_result_to_db(
         proc_time = processing_time[i]
         bottleneck = bottleneck_times[i]
 
-        # Calcula os momentos finais corretos com base no seu fluxo
-        moment_conclusion = proc_time + start_h
+        moment_conclusion = start_h + proc_time
         moment_conclusion_final = moment_conclusion + bottleneck
         production_completion = sequencing_date + timedelta(hours=moment_conclusion_final)
-
         start_dt = sequencing_date + timedelta(hours=start_h)
-        # DEBUG 5 AQUI
+
         status = "On Time" if production_completion <= job.promised_date else "Late"
-
         if status == "On Time":
-            print(">> STATUS DEFINIDO: ON TIME")
             on_time_count += 1
-        else:
-            print(">> STATUS DEFINIDO: LATE ")
 
-        # Calcula e exibe billing date
         billing_date = production_completion.date()
-        print(f"Billing Date Calculado   : {billing_date} (esperado: {production_completion.date()} + 3 dias)")
-
         revenue = round(job.product_value * job.demand, 2)
         revenue_by_day[billing_date] += revenue
-        #DEBUG 6 AQUI
+
         db.add(ProductionScheduleResult(
             run_id=run.id,
             job_id=job.id,
