@@ -60,7 +60,12 @@ def save_solver_result_to_db(
         if status == "On Time":
             on_time_count += 1
 
-        billing_date = production_completion.date()
+        cutoff_time = datetime.strptime("16:59:00", "%H:%M:%S").time()
+        if production_completion.time() <= cutoff_time:
+            billing_date = production_completion.date()
+        else:
+            billing_date = (production_completion + timedelta(days=1)).date()
+
         revenue = round(job.product_value * job.demand, 2)
         revenue_by_day[billing_date] += revenue
 
@@ -84,7 +89,7 @@ def save_solver_result_to_db(
     db.flush()
 
     for day, total in revenue_by_day.items():
-        print(f"{day} => R$ {round(total, 2)}")
+
         db.add(PredictedRevenueByDay(
             run_id=run.id,
             billing_date=day,
