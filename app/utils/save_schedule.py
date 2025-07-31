@@ -37,7 +37,7 @@ def save_solver_result_to_db(
         optimized_setups=optimized_setups,
         on_time_jobs=0,
         total_machine_hours=int(time_required),
-        time_required=int(total_machine_hours),
+        max_deadline_hours=int(total_machine_hours),
         machine_status=machine_status,
         created_at=datetime.utcnow()
     )
