@@ -19,7 +19,8 @@ def save_solver_result_to_db(
     optimized_setups: int,
 ) -> ProductionScheduleRun:
 
-    total_machine_hours = sum(processing_time)
+    latest_promised_datetime = max(job.promised_date for job in jobs_data)
+    total_machine_hours = (latest_promised_datetime - sequencing_date).total_seconds() / 3600
 
     time_required = max(
         value(start[i]) + processing_time[i] + bottleneck_times[i]
