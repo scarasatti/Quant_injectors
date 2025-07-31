@@ -21,12 +21,12 @@ def save_solver_result_to_db(
 
     total_machine_hours = sum(processing_time)
 
-    max_deadline_hours = max(
+    time_required = max(
         value(start[i]) + processing_time[i] + bottleneck_times[i]
         for i in range(len(jobs_data))
     )
 
-    machine_status = "On Time" if total_machine_hours >= max_deadline_hours else "Late"
+    machine_status = "On Time" if total_machine_hours >= time_required else "Late"
 
     on_time_count = 0
     revenue_by_day = defaultdict(float)
@@ -36,8 +36,8 @@ def save_solver_result_to_db(
         setup_count=setup_count,
         optimized_setups=optimized_setups,
         on_time_jobs=0,
-        total_machine_hours=int(total_machine_hours),
-        max_deadline_hours=int(max_deadline_hours),
+        total_machine_hours=int(time_required),
+        time_required=int(total_machine_hours),
         machine_status=machine_status,
         created_at=datetime.utcnow()
     )
