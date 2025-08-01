@@ -60,6 +60,9 @@ def calculate_processing_time(job, sequencing_date: datetime, machine_availabili
     deadline = (promised_date - sequencing_date).total_seconds() / 3600
     deadline_in_bottleneck = math.ceil((deadline - total_bottleneck_time / 3600) * 10) / 10
 
+    if deadline_in_bottleneck < 0:
+        deadline_in_bottleneck = 0
+
     return round( in_bottleneck_time_hours, 2), round(deadline_in_bottleneck, 2), round(total_bottleneck_time/3600, 2)
 
 @router.post("/solve")
