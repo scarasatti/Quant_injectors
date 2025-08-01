@@ -88,8 +88,7 @@ def save_solver_result_to_db(
     run.on_time_jobs = on_time_count
     db.flush()
 
-    for day, total in revenue_by_day.items():
-
+    for day, total in sorted(revenue_by_day.items()):
         db.add(PredictedRevenueByDay(
             run_id=run.id,
             billing_date=day,
