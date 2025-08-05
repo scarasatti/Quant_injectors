@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Sequenciamento em Tempo Real</title>
+</head>
+<body>
+  <h2>Status: <span id="status">Aguardando...</span></h2>
+  <button onclick="startSequenciamento()">Iniciar Sequenciamento</button>
+
+  <script>
+    const userId = "1";
+    const jobIds = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+    const sequencingDate = "2024-11-22T12:00:00";
+    const machineAvailability = 100;
+
+    let source;
+    let finalObjectiveValue = null;
+    let sequenciamentoFinalizado = false;
+
+    function conectarSSE() {
+      if (source) source.close();
+
+      source = new EventSource(`/sequenciamento/sequenciamento/stream?user_id=${userId}`);
+      document.getElementById("status").innerText = "Conectando com SSE...";
+
+      source.onmessage = function (event) {
+        try {
+          const status = JSON.parse(event.data);
+
+          if (status === true) {
+            document.getElementById("status").innerText = "Sequenciamento em andamento...";
+          }
+
+          if (status === false) {
+            document.getElementById("status").innerText = finalObjectiveValue
+              ? `Sequenciamento finalizado. Objetivo: ${finalObjectiveValue}`
+              : "Sequenciamento finalizado.";
+            sequenciamentoFinalizado = true;
+            source.close();
+          }
+
+        } catch (err) {
+          console.warn("SSE não interpretado como booleano:", event.data);
+        }
+      };
+
+      source.onerror = function (err) {
+        document.getElementById("status").innerText = "Erro na conexão SSE";
+        console.error("Erro SSE:", err);
+        source.close();
+      };
+    }
+
+    async function startSequenciamento() {
+      conectarSSE(); // já inicia a escuta SSE
+
+      try {
+        const url = `/sequenciamento/sequenciamento/solve?sequencing_date=${encodeURIComponent(sequencingDate)}&machine_availability=${machineAvailability}`;
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(jobIds)
+        });
+
+        const data = await response.json();
+        finalObjectiveValue = data.objective_value;
+
+        if (!response.ok) {
+          document.getElementById("status").innerText = 'Erro na resposta: ${JSON.stringify(data)}`;
+        } else {
+          console.log("Sequenciamento resolvido:", data);
+        }
+
+      } catch (err) {
+        console.error("❌ Erro na requisição:", err);
+        document.getElementById("status").innerText = "❌ Erro ao enviar dados";
+      }
+    }
+  </script>
+</body>
+</html>
