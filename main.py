@@ -15,6 +15,8 @@ from app.routes import (
     solver,
     production_schedule,
     db_setup,
+    maquina_routes,
+    production_line_routes,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
@@ -52,6 +54,8 @@ app.include_router(client_routes.router, tags=["Clients"])
 app.include_router(product_routes.router, tags=["Products"])
 app.include_router(job_routes.router, tags=["Jobs"])
 app.include_router(setup_routes.router, tags=["Setups"])
+app.include_router(maquina_routes.router, tags=["Maquinas"])
+app.include_router(production_line_routes.router, tags=["Production Lines"])
 app.include_router(upload_products_routes.router, tags=["Uploads"])
 app.include_router(upload_clientes_routes.router, tags=["Uploads"])
 app.include_router(upload_jobs_routes.router, tags=["Uploads"])

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 from datetime import datetime, time
 from app.database import get_db
@@ -18,6 +18,8 @@ from io import StringIO
 import sys
 from app.utils.email_sender import send_solver_report
 import math
+from algorithm.injetoras_modelo import build_and_solve as solve_injetoras_model
+from app.schemas.injetoras_solver_schema import InjetorasRequest
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
@@ -194,4 +196,58 @@ async def solve_jobs(
         "sequencing_date": sequencing_date.isoformat(),
         "sequencia": resultado,
         "objective_value": value(model.objective)
+    }
+
+
+@router.post("/injetoras/solve")
+async def solve_injetoras(request: InjetorasRequest | None = Body(default=None)):
+    if request is None:
+        request = InjetorasRequest()
+    processing_map = (
+        {(entry.job, entry.machine): entry.time for entry in request.processing}
+        if request.processing else None
+    )
+    due_map = (
+        {entry.job: entry.time for entry in request.due}
+        if request.due else None
+    )
+    priority_map = (
+        {entry.job: entry.value for entry in request.priority}
+        if request.priority else None
+    )
+    setup_map = (
+        {(entry.predecessor, entry.successor, entry.machine): entry.time for entry in request.setup}
+        if request.setup else None
+    )
+
+    status, obj_value, sequences, completion, tardiness = solve_injetoras_model(
+        jobs=request.jobs,
+        machines=request.machines,
+        processing=processing_map,
+        due=due_map,
+        priority=priority_map,
+        setup3=setup_map,
+        dummy=request.dummy,
+    )
+
+    completion_payload = [
+        {
+            "job": job,
+            "machine": machine,
+            "completion_time": time_value,
+        }
+        for (job, machine), time_value in completion.items()
+    ]
+
+    tardiness_payload = [
+        {"job": job, "tardiness": tard}
+        for job, tard in tardiness.items()
+    ]
+
+    return {
+        "status": status,
+        "objective_value": obj_value,
+        "sequences": {str(machine): seq for machine, seq in sequences.items()},
+        "completion": completion_payload,
+        "tardiness": tardiness_payload,
     }

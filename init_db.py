@@ -11,6 +11,8 @@ from app.models import (
     product,
     job,
     setup,
+    maquina,
+    production_line,
     predicted_revenue_by_day,
     production_schedule_run,
     production_schedule_result,
