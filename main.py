@@ -1,12 +1,26 @@
-from app.routes import (
-    user_routes,
-    interprise_routes,
+from app.routes.auth import (
     auth_routes,
     password_reset_routes,
+    user_routes,
+)
+from app.routes.crud import (
     client_routes,
     product_routes,
     job_routes,
     setup_routes,
+    setup_matrix_routes,
+    maquina_routes,
+    production_line_routes,
+    composition_line_routes,
+    interprise_routes,
+    materia_prima_routes,
+    composicao_produto_routes,
+    regular_shift_routes,
+    holiday_routes,
+    mold_routes,
+    production_time_routes,
+)
+from app.routes import (
     upload_products_routes,
     upload_jobs_routes,
     upload_clientes_routes,
@@ -15,8 +29,7 @@ from app.routes import (
     solver,
     production_schedule,
     db_setup,
-    maquina_routes,
-    production_line_routes,
+    test_excel_route,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
@@ -45,7 +58,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+# Mount static files directory (optional - only if directory exists)
+import os
+if os.path.exists("static"):
+    app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 app.include_router(interprise_routes.router, tags=["Enterprises"])
 app.include_router(user_routes.router, tags=["Users"])
 app.include_router(auth_routes.router, prefix="/auth", tags=["Auth"])
@@ -54,8 +70,16 @@ app.include_router(client_routes.router, tags=["Clients"])
 app.include_router(product_routes.router, tags=["Products"])
 app.include_router(job_routes.router, tags=["Jobs"])
 app.include_router(setup_routes.router, tags=["Setups"])
-app.include_router(maquina_routes.router, tags=["Maquinas"])
+app.include_router(setup_matrix_routes.router, tags=["Setup Matrix"])
+app.include_router(maquina_routes.router, tags=["Machines"])
 app.include_router(production_line_routes.router, tags=["Production Lines"])
+app.include_router(composition_line_routes.router, tags=["Composition Lines"])
+app.include_router(materia_prima_routes.router, tags=["Matéria Prima"])
+app.include_router(composicao_produto_routes.router, tags=["Composição de Produtos"])
+app.include_router(regular_shift_routes.router, tags=["Turnos Regulares"])
+app.include_router(holiday_routes.router, tags=["Feriados"])
+app.include_router(mold_routes.router, tags=["Molds"])
+app.include_router(production_time_routes.router, tags=["Production Time"])
 app.include_router(upload_products_routes.router, tags=["Uploads"])
 app.include_router(upload_clientes_routes.router, tags=["Uploads"])
 app.include_router(upload_jobs_routes.router, tags=["Uploads"])
@@ -64,6 +88,7 @@ app.include_router(setup_template_routes.router, tags=["Download Setup Template"
 app.include_router(solver.router, prefix="/sequenciamento", tags=["Sequenciamento"])
 app.include_router(production_schedule.router, tags=["Production Schedule"])
 app.include_router(db_setup.router, tags=["DB Setup"])
+app.include_router(test_excel_route.router, tags=["Test"])
 
 @app.get("/")
 def root():

@@ -1,11 +1,9 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException
 from sqlalchemy.orm import Session
-from decimal import Decimal
 import pandas as pd
 
 from app.database import get_db
 from app.models.product import Product
-from app.models.setup import Setup
 from app.auth.auth_bearer import get_current_user
 
 router = APIRouter(prefix="/upload")
@@ -27,11 +25,8 @@ async def upload_products_xlsx(file: UploadFile = File(...), db: Session = Depen
 
         for _, row in df.iterrows():
             name = str(row.get("produto")).strip()
-            cycle = row.get("ciclo")
-            bottleneck = row.get("Tempo de Produção Pós Gargalo")
-            scrap = row.get("refugo")
 
-            if not name or pd.isna(cycle) or pd.isna(bottleneck):
+            if not name:
                 continue
 
             existing = db.query(Product).filter(Product.name == name).first()
@@ -39,28 +34,15 @@ async def upload_products_xlsx(file: UploadFile = File(...), db: Session = Depen
                 ignored_products += 1
                 continue
 
-            product = Product(
-                name=name,
-                cycle=int(cycle),
-                bottleneck=int(bottleneck),
-                scrap=Decimal(scrap) if not pd.isna(scrap) else Decimal(0)
-            )
+            product = Product(name=name)
             db.add(product)
             db.commit()
             db.refresh(product)
             added_products += 1
 
-            # Create setups for the new product
-            all_others = db.query(Product).filter(Product.id != product.id).all()
-
-            # Self-setup
-            db.add(Setup(from_product=product.id, to_product=product.id, setup_time=0))
-
-            for other in all_others:
-                db.add(Setup(from_product=product.id, to_product=other.id, setup_time=0))
-                db.add(Setup(from_product=other.id, to_product=product.id, setup_time=0))
-
-            db.commit()
+            # Note: Setups are no longer created automatically when a product is created.
+            # Setups are now created between ProductionLines (mold + product combinations) and require a machine_id.
+            # Setups should be created when ProductionLines are created or via setup matrix upload.
 
         return {
             "message": "Upload completed.",

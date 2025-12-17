@@ -7,8 +7,8 @@ __pycache__/
 .env
 .venv/
 venv/
-ENV/
-env/
+.env/
+.env/
 *.env
 algorithm/
 
@@ -67,3 +67,6 @@ instance/
 *.bak
 *.tmp
 *.swp
+
+# Logs
+logs/

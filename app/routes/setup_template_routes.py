@@ -5,44 +5,61 @@ import pandas as pd
 import io
 
 from app.database import get_db
-from app.models.product import Product
+from app.models.composition_line import CompositionLine
 from app.models.setup import Setup
-from app.auth.auth_bearer import get_current_user
-from app.models.user import User
+from sqlalchemy.orm import joinedload
 
 router = APIRouter(prefix="/template", tags=["Templates"])
 
 @router.get("/setup-matrix")
 def download_setup_template(db: Session = Depends(get_db)):
-    produtos = db.query(Product).all()
-    nomes = [p.name for p in produtos]
-    id_por_nome = {p.name: p.id for p in produtos}
-    nome_por_id = {p.id: p.name for p in produtos}
-
+    # Buscar todas as composition lines com mold e product carregados
+    composition_lines = db.query(CompositionLine).options(
+        joinedload(CompositionLine.mold),
+        joinedload(CompositionLine.product)
+    ).all()
+    
+    # Criar rótulos no formato "M{id_mold}-{nome_produto}"
+    rotulos = []
+    id_por_rotulo = {}
+    rotulo_por_id = {}
+    
+    for cl in composition_lines:
+        rotulo = f"M{cl.mold_id}-{cl.product.name}"
+        rotulos.append(rotulo)
+        id_por_rotulo[rotulo] = cl.id
+        rotulo_por_id[cl.id] = rotulo
+    
     # Cria DataFrame com índice e colunas iguais
-    matriz = pd.DataFrame("", index=nomes, columns=nomes)
+    matriz = pd.DataFrame("", index=rotulos, columns=rotulos)
     matriz.index.name = "De\\Para"
 
-    for nome_de in nomes:
-        for nome_para in nomes:
-            if nome_de == nome_para:
-                matriz.at[nome_de, nome_para] = 0
+    for rotulo_de in rotulos:
+        for rotulo_para in rotulos:
+            id_de = id_por_rotulo[rotulo_de]
+            id_para = id_por_rotulo[rotulo_para]
+            
+            if id_de == id_para:
+                matriz.at[rotulo_de, rotulo_para] = 0
                 continue
 
-            id_de = id_por_nome[nome_de]
-            id_para = id_por_nome[nome_para]
-
-            setup = db.query(Setup).filter_by(from_product=id_de, to_product=id_para).first()
+            setup = db.query(Setup).filter_by(
+                from_composition_line_id=id_de,
+                to_composition_line_id=id_para
+            ).first()
 
             if setup:
-                matriz.at[nome_de, nome_para] = setup.setup_time
+                matriz.at[rotulo_de, rotulo_para] = setup.setup_time
             else:
-                # Tenta buscar o inverso, apenas para exibição (não altera lógica do modelo)
-                setup_inv = db.query(Setup).filter_by(from_product=id_para, to_product=id_de).first()
+                # Tenta buscar o inverso, apenas para exibição
+                setup_inv = db.query(Setup).filter_by(
+                    from_composition_line_id=id_para,
+                    to_composition_line_id=id_de
+                ).first()
                 if setup_inv:
-                    matriz.at[nome_de, nome_para] = f"(inv) {setup_inv.setup_time}"
+                    matriz.at[rotulo_de, rotulo_para] = f"(inv) {setup_inv.setup_time}"
                 else:
-                    matriz.at[nome_de, nome_para] = ""
+                    matriz.at[rotulo_de, rotulo_para] = ""
 
     # Exporta para Excel em memória
     stream = io.BytesIO()
@@ -52,5 +69,5 @@ def download_setup_template(db: Session = Depends(get_db)):
     return StreamingResponse(
         stream,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": "attachment; filename=setup_matrix_model.xlsx"}
+        headers={"Content-Disposition": "attachment; filename=setup_matrix.xlsx"}
     )

@@ -93,6 +93,7 @@ def login(
 
 @router.post("/logout")
 def logout(
+    current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
@@ -112,6 +113,7 @@ def logout(
 
 @router.post("/refresh")
 def refresh_token(
+    current_user: User = Depends(get_current_user),
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db)
 ):
@@ -136,3 +138,5 @@ def refresh_token(
         "access_token": new_token,
         "token_type": "bearer"
     }
+
+

@@ -60,3 +60,5 @@ def delete_client(
     db.delete(db_client)
     db.commit()
     return {"message": "Client deleted"}
+
+

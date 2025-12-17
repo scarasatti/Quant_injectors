@@ -79,3 +79,14 @@ def delete_enterprise(enterprise_id: int, db: Session = Depends(get_db)):
     db.delete(enterprise)
     db.commit()
     return {"message": "Empresa removida com sucesso."}
+
+
+
+
+
+
+
+
+
+
+

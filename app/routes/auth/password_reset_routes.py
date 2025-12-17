@@ -74,3 +74,5 @@ def confirm_password_reset(data: PasswordResetConfirm, db: Session = Depends(get
     db.commit()
 
     return {"message": "Senha atualizada com sucesso."}
+
+

@@ -1,19 +1,21 @@
 from decimal import Decimal
 from pydantic import BaseModel, Field
+from typing import Optional
 
-class MaquinaBase(BaseModel):
-    cod_maquina: str = Field(..., description="Código da máquina")
-    disponibilidade: Decimal = Field(..., ge=0.01, le=100, description="Disponibilidade em porcentagem (0.01 a 100)")
+class MachineBase(BaseModel):
+    name: str = Field(..., description="Machine name")
+    availability: Decimal = Field(..., ge=0.01, le=100, description="Availability percentage (0.01 to 100)")
 
-class MaquinaCreate(MaquinaBase):
+class MachineCreate(MachineBase):
     pass
 
-class MaquinaUpdate(MaquinaBase):
+class MachineUpdate(MachineBase):
     pass
 
-class MaquinaResponse(MaquinaBase):
+class MachineResponse(MachineBase):
     id: int
 
     class Config:
         from_attributes = True
+
 
