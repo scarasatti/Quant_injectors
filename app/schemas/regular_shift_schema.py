@@ -1,5 +1,6 @@
 from enum import Enum as PyEnum
 from typing import Optional
+from datetime import time
 
 from pydantic import BaseModel, Field
 
@@ -27,6 +28,14 @@ class RegularShiftBase(BaseModel):
     noite: bool = Field(default=False)
     frequencia: FrequenciaTurno
 
+    # Horários de início/fim (opcionais)
+    manha_inicio: Optional[time] = None
+    manha_fim: Optional[time] = None
+    tarde_inicio: Optional[time] = None
+    tarde_fim: Optional[time] = None
+    noite_inicio: Optional[time] = None
+    noite_fim: Optional[time] = None
+
 
 class RegularShiftCreate(RegularShiftBase):
     pass
@@ -38,31 +47,16 @@ class RegularShiftUpdate(BaseModel):
     noite: Optional[bool] = None
     frequencia: Optional[FrequenciaTurno] = None
 
+    manha_inicio: Optional[time] = None
+    manha_fim: Optional[time] = None
+    tarde_inicio: Optional[time] = None
+    tarde_fim: Optional[time] = None
+    noite_inicio: Optional[time] = None
+    noite_fim: Optional[time] = None
+
 
 class RegularShiftResponse(RegularShiftBase):
     id: int
 
     class Config:
         from_attributes = True
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
