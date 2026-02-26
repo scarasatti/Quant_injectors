@@ -199,6 +199,16 @@ async def solve_jobs(
     resultado = []
 
     for posicao, i in enumerate(jobs_ordenados):
+        # Calcular tempo de conclusão total incluindo bottleneck
+        start_h = value(start[i])
+        proc_time = processing_time[i]
+        bottleneck = post_bottleneck_times[i]
+        moment_conclusion_final = start_h + proc_time + bottleneck
+        
+        # Filtrar jobs com tempo de conclusão no gargalo <= 0
+        if moment_conclusion_final <= 0:
+            continue  # Pular este job no resultado retornado
+        
         resultado.append({
             "job_id": jobs_data[i].id,
             "ordem": posicao + 1,

@@ -10,7 +10,7 @@ venv/
 .env/
 .env/
 *.env
-algorithm/
+
 
 # PyInstaller
 *.spec

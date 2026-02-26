@@ -19,6 +19,7 @@ from app.routes.crud import (
     holiday_routes,
     mold_routes,
     production_time_routes,
+    billing_configuration_routes,
 )
 from app.routes import (
     upload_products_routes,
@@ -30,6 +31,7 @@ from app.routes import (
     production_schedule,
     db_setup,
     test_excel_route,
+    schedule_report_routes,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi import FastAPI
@@ -80,6 +82,7 @@ app.include_router(regular_shift_routes.router, tags=["Turnos Regulares"])
 app.include_router(holiday_routes.router, tags=["Feriados"])
 app.include_router(mold_routes.router, tags=["Molds"])
 app.include_router(production_time_routes.router, tags=["Production Time"])
+app.include_router(billing_configuration_routes.router, tags=["Billing Configuration"])
 app.include_router(upload_products_routes.router, tags=["Uploads"])
 app.include_router(upload_clientes_routes.router, tags=["Uploads"])
 app.include_router(upload_jobs_routes.router, tags=["Uploads"])
@@ -89,6 +92,7 @@ app.include_router(solver.router, prefix="/sequenciamento", tags=["Sequenciament
 app.include_router(production_schedule.router, tags=["Production Schedule"])
 app.include_router(db_setup.router, tags=["DB Setup"])
 app.include_router(test_excel_route.router, tags=["Test"])
+app.include_router(schedule_report_routes.router, tags=["Schedule Reports"])
 
 @app.get("/")
 def root():

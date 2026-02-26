@@ -76,14 +76,32 @@ init_db.py                # Bootstrap das tabelas
 - Uploads de planilhas (`/upload_*`)
 - `GET /init-db` – criação das tabelas (ambiente dev)
 
+### Rotas de Teste e Validação
+
+- `POST /test/excel-read` – teste completo com logs detalhados
+- `GET /test/logs/list` – listar logs gerados
+- `GET /test/logs/download/{filename}` – baixar log específico
+- `POST /test/logs/cleanup` – limpar logs antigos
+
 Consulte `app/routes` para os endpoints completos.
 
 ---
 
-## 🧠 Documentação do Banco
+## 🧠 Documentação
 
+### Banco de Dados
 Toda a modelagem (18 tabelas, relacionamentos, validações) está descrita em `DATABASE_SCHEMA.md`.  
 Use esse arquivo como referência para integrações, migrações e análises.
+
+### Logs de Validação
+O sistema gera logs detalhados para validação dos resultados do solver:
+- **Logs de Inputs** (`solver_inputs_*.txt`) – parâmetros dos jobs e matriz de setup
+- **Logs de Resultados** (`solver_results_*.txt`) – sequências detalhadas, atrasos, validações
+- **Logs JSON** (`solver_results_*.json`) – formato estruturado para análise programática
+
+📖 Consulte `docs/LOGS_VALIDACAO.md` para detalhes completos sobre os logs.
+
+🐍 Use `examples/analyze_solver_logs.py` para análise programática dos logs JSON.
 
 ---
 

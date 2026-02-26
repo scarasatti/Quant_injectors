@@ -26,6 +26,7 @@ from app.models import (
     mold,
     mold_product,
     production_time,
+    billing_configuration,
 )
 
 def init():

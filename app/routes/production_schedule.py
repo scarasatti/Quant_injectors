@@ -7,6 +7,9 @@ from app.database import get_db
 from app.models.production_schedule_run import ProductionScheduleRun
 from app.models.production_schedule_result import ProductionScheduleResult
 from app.models.predicted_revenue_by_day import PredictedRevenueByDay
+from app.models.composition_line import CompositionLine
+from algorithm.injection.due_date_calculator import calculate_billing_date
+from algorithm.injection.schedule_logger import generate_schedule_log_from_db
 
 from app.schemas.production_schedule_run_schema import ProductionScheduleRunCreate, ProductionScheduleRunResponse
 from app.schemas.production_schedule_result_schema import ProductionScheduleResultCreate, ProductionScheduleResultResponse
@@ -49,15 +52,40 @@ def create_schedule(
 
         scheduled_datetime = datetime.strptime(f"{r.scheduled_date} 23:59:59", "%Y-%m-%d %H:%M:%S")
 
+        # Filtrar jobs com tempo de conclusão inválido (anterior ou igual ao início do sequenciamento)
+        sequencing_start = run_data.sequencing_start
+        if actual_datetime <= sequencing_start:
+            print(f"⚠️ Job {r.job_id} ignorado: tempo de conclusão <= início do sequenciamento")
+            continue  # Pular este job, não armazenar
+
         status = "On Time" if actual_datetime <= scheduled_datetime else "Late"
-        billing_date = actual_datetime.date() + timedelta(days=3)
+        
+        # Calcular data de faturamento baseada nas regras de configuração
+        billing_date = calculate_billing_date(actual_datetime, db)
+        
         expected_revenue = round(job.demand * job.product_value, 2)
+
+        # Buscar máquina e molde através da composition_line
+        composition_line = db.query(CompositionLine).filter_by(
+            product_id=job.fk_id_product
+        ).first()
+        
+        machine_name = "N/A"
+        mold_name = "N/A"
+        
+        if composition_line:
+            mold_name = composition_line.mold.name if composition_line.mold else "N/A"
+            # Pegar a primeira máquina da composition_line (se houver)
+            if composition_line.machines and len(composition_line.machines) > 0:
+                machine_name = composition_line.machines[0].machine.name
 
         # DEBUG PRINT
         print("======= STATUS DEBUG =======")
         print(f"JOB ID           : {r.job_id}")
         print(f"Cliente          : {job.client.name}")
         print(f"Produto          : {job.product.name}")
+        print(f"Máquina          : {machine_name}")
+        print(f"Molde            : {mold_name}")
         print(f"Data Agendada    : {scheduled_datetime}")
         print(f"Data de Entrega  : {actual_datetime}")
         print(f"Status Calculado : {status}")
@@ -69,6 +97,8 @@ def create_schedule(
             order_index=r.ordem,
             client_name=job.client.name,
             product_name=job.product.name,
+            machine_name=machine_name,
+            mold_name=mold_name,
             quantity=job.demand,
             scheduled_date=scheduled_datetime.date(),
             actual_date=actual_datetime.date(),
@@ -125,4 +155,19 @@ def delete_run(run_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"message": "Execution and related data deleted successfully"}
+
+@router.post("/{run_id}/generate-log")
+def generate_log_for_run(run_id: int, db: Session = Depends(get_db)):
+    """Gera um arquivo de log formatado para uma execução específica"""
+    try:
+        filepath = generate_schedule_log_from_db(run_id, db)
+        return {
+            "message": "Log gerado com sucesso",
+            "filepath": filepath,
+            "run_id": run_id
+        }
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao gerar log: {str(e)}")
 

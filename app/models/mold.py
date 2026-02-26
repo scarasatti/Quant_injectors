@@ -20,4 +20,3 @@ class Mold(Base):
     
     # 1:N relationship with composition lines
     composition_lines = relationship("CompositionLine", back_populates="mold", cascade="all, delete-orphan")
-

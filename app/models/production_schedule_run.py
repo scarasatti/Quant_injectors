@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, String, DateTime
+from sqlalchemy import Column, Integer, Float, String, DateTime, Boolean
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from app.database import Base
@@ -17,6 +17,7 @@ class ProductionScheduleRun(Base):
     total_machine_hours = Column(Float)
     max_deadline_hours = Column(Float)
     machine_status = Column(String)
+    next_saturday_is_working = Column(Boolean, default=False)
 
     results = relationship("ProductionScheduleResult", back_populates="run", cascade="all, delete-orphan")
     revenue_forecast = relationship("PredictedRevenueByDay", back_populates="run", cascade="all, delete-orphan")
