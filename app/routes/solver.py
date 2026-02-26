@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from fastapi import APIRouter, Depends, HTTPException, Query, Body, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, time
 from app.database import get_db
@@ -21,6 +21,13 @@ from app.utils.email_sender import send_solver_report
 import math
 from algorithm.injection import solve_injection_scheduling
 from app.schemas.injetoras_solver_schema import InjetorasRequest
+from app.models.billing_configuration import BillingConfiguration
+from algorithm.injection.calculate_processing_time import calculate_processing_time
+from algorithm.injection.solver_wrapper import solve_all_lines
+from app.utils.save_schedule import save_test_solver_results_to_db
+import json
+import pandas as pd
+from io import BytesIO
 
 router = APIRouter(prefix="/sequenciamento", tags=["Sequenciamento"])
 
@@ -300,3 +307,140 @@ async def solve_injetoras(request: InjetorasRequest | None = Body(default=None))
         "completion": completion_payload,
         "tardiness": tardiness_payload,
     }
+
+
+@router.post("/excel/solve")
+async def solve_excel_official(
+    file: UploadFile = File(..., description="Arquivo XLSX com os dados"),
+    sequencing_date: datetime = Form(
+        ..., description="Data e hora de início do sequenciamento (formato: YYYY-MM-DDTHH:MM:SS)"
+    ),
+    next_saturday_is_working: bool = Form(
+        default=False, description="Indica se o próximo sábado é dia útil"
+    ),
+    machine_states_json: str = Form(
+        default="[]", description="JSON com estados das máquinas (formato: array de objetos)"
+    ),
+    programmed_stops_json: str = Form(
+        default="[]", description="JSON com paradas programadas (formato: array de objetos)"
+    ),
+    db: Session = Depends(get_db),
+):
+    """Endpoint oficial do solver por Excel (resposta limpa para produção)."""
+    if not file.filename or not file.filename.endswith(".xlsx"):
+        raise HTTPException(status_code=400, detail="O arquivo precisa ser .xlsx")
+
+    try:
+        billing_config = db.query(BillingConfiguration).filter(
+            BillingConfiguration.is_active == True
+        ).first()
+        if not billing_config:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma configuração de faturamento ativa encontrada. Crie uma configuração em /billing-configuration/",
+            )
+
+        contents = await file.read()
+
+        machine_states = []
+        if machine_states_json and machine_states_json != "[]":
+            try:
+                machine_states = json.loads(machine_states_json)
+            except json.JSONDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Erro ao parsear JSON de machine_states: {str(e)}",
+                )
+
+        programmed_stops = []
+        if programmed_stops_json and programmed_stops_json != "[]":
+            try:
+                programmed_stops = json.loads(programmed_stops_json)
+            except json.JSONDecodeError as e:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Erro ao parsear JSON de programmed_stops: {str(e)}",
+                )
+
+        df = pd.read_excel(BytesIO(contents), engine="openpyxl")
+        df.columns = df.columns.str.strip()
+        excel_rows = df.to_dict("records")
+
+        processing_result = calculate_processing_time(
+            excel_rows=excel_rows,
+            sequencing_date=sequencing_date,
+            next_saturday_is_working=next_saturday_is_working,
+            db=db,
+            machine_states=machine_states or None,
+            programmed_stops=programmed_stops or None,
+        )
+
+        jobs_by_line_data = processing_result.get("jobs_by_line", {})
+        if not jobs_by_line_data:
+            raise HTTPException(
+                status_code=400,
+                detail="Nenhuma linha de produção com jobs encontrada para resolver.",
+            )
+
+        solver_results = solve_all_lines(
+            jobs_by_line=jobs_by_line_data,
+            db=db,
+            max_workers=None,
+        )
+
+        if not solver_results:
+            raise HTTPException(status_code=500, detail="Nenhum resultado do solver foi gerado")
+
+        run_saved, schedule_report_path = save_test_solver_results_to_db(
+            db=db,
+            sequencing_date=sequencing_date,
+            solver_results=solver_results,
+            jobs_by_line=jobs_by_line_data,
+            next_saturday_is_working=next_saturday_is_working,
+        )
+
+        lines_with_error = [
+            str(pl_id) for pl_id, result in solver_results.items() if "error" in result
+        ]
+        lines_solved = [
+            str(pl_id) for pl_id, result in solver_results.items() if "error" not in result
+        ]
+
+        return {
+            "run_id": run_saved.id,
+            "sequencing_date": sequencing_date.isoformat(),
+            "next_saturday_is_working": next_saturday_is_working,
+            "billing_configuration": {
+                "config_id": billing_config.id,
+                "rule_type": billing_config.rule_type.value if billing_config.rule_type else None,
+                "billing_deadline_time": billing_config.billing_deadline_time.strftime("%H:%M:%S")
+                if billing_config.billing_deadline_time
+                else None,
+            },
+            "processing_summary": {
+                "total_jobs": processing_result.get("total_jobs", 0),
+                "total_lines": processing_result.get("total_lines", 0),
+                "errors": processing_result.get("errors", []),
+            },
+            "solver_summary": {
+                "total_lines_received": len(solver_results),
+                "lines_solved": len(lines_solved),
+                "lines_with_error": len(lines_with_error),
+                "line_ids_solved": lines_solved,
+                "line_ids_with_error": lines_with_error,
+                "results": {
+                    str(pl_id): {
+                        "status": result.get("status", "Unknown"),
+                        "objective": result.get("objective", 0.0),
+                        "error": result.get("error"),
+                    }
+                    for pl_id, result in solver_results.items()
+                },
+            },
+            "saved_results_count": len(run_saved.results),
+            "schedule_report_path": schedule_report_path,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erro ao processar arquivo: {str(e)}")
